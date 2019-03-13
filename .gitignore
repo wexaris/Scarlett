@@ -1,0 +1,7 @@
+# IDE
+.vscode/*
+
+# Project
+bin/*
+lib/*
+build/*
