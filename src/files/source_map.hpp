@@ -7,7 +7,6 @@ class SourceMap {
     static std::vector<unique<SourceFile>> files;
 
     static SourceFile* find(const std::string& filepath);
-    static SourceFile* find_free(const std::string& filepath);
     static SourceFile* load(const std::string& filepath);
 
 public:

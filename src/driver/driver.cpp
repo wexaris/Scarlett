@@ -23,31 +23,22 @@ long long timed_exec(const std::function<void(void)>& fun) {
 /// DRIVER ///
 //////////////
 
+#include "files/source_map.hpp"
+
 void Driver::compile() {
     // Fail compilation if no input file was given
     if (sess->infile.empty()) {
         ERR("Input file missing");
     }
 
-    LOG_TIMED("Read file chars", [&]() {
-        UTFBumpReader reader(sess->infile);
-        while (!reader.is_eof()) {
-            LOG(reader.curr() << " (" << reader.get_pos() << ":" << reader.get_pos().idx << ")");
-            reader.bump();
-        }
-        reader.free_sf();
-    });
-
     LOG_TIMED("Read lexer chars", [&]() {
         Lexer lex(sess->infile);
         Token tok = lex.next_token();
         while (!tok.is_eof()) {
-            LOG(tok);
+            LOG(tok.raw());
             tok = lex.next_token();;
         }
-        lex.free_sf();
     });
-
 
     Parser parser = Parser(sess->infile);
 

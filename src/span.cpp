@@ -7,6 +7,6 @@ std::ostream& operator<<(std::ostream& os, const TextPos& sp) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Span& sp) {
-    os << sp.source->filename << ":" << sp.lo << "-" << sp.hi;
+    os << sp.source->name << ":" << sp.lo << "-" << sp.hi;
     return os;
 }

@@ -70,36 +70,6 @@ inline std::optional<TokenType> find_keyword(const std::string& id) {
     return std::nullopt;
 }
 
-/* Bump past any upcoming whitespace or comments in the given Lexer. */
-inline void skip_ws_and_comments(Lexer* lex) {
-    while (lex->curr_char().is_ws()) {
-        lex->bump();
-    }
-    if (lex->curr_char() == '/') {
-        if (lex->next_char() == '/') {
-            lex->bump(2);
-            while (lex->curr_char() != '\n' && !lex->curr_char().is_eof()) {
-                lex->bump();
-            }
-            skip_ws_and_comments(lex);
-        }
-        else if (lex->next_char() == '*') {
-            Span comment_sp = Span(lex->get_sf(), lex->get_pos(), lex->get_pos());
-            lex->bump(2);
-            while (lex->curr_char() != '*' && lex->curr_char() != '/') {
-                // Don't allow unclosed comments at end of file
-                if (lex->curr_char().is_eof()) {
-                    throw LexError::UnexpectedEOF(comment_sp);
-                }
-                comment_sp.hi = lex->get_pos();
-                lex->bump();
-            }
-            lex->bump(2);
-            skip_ws_and_comments(lex);
-        }
-    }
-}
-
 
 /////////////
 /// Lexer ///
@@ -117,9 +87,38 @@ void Lexer::bump(uint n) {
     next_c = reader.next();
 }
 
+inline void Lexer::skip_ws_and_comments() {
+    while (curr_c.is_ws()) {
+        bump();
+    }
+    if (curr_c == '/') {
+        if (next_c == '/') {
+            bump(2);
+            while (curr_c != '\n' && !curr_c.is_eof()) {
+                bump();
+            }
+            skip_ws_and_comments();
+        }
+        else if (next_c == '*') {
+            Span comment_sp = Span(get_sf(), get_pos(), get_pos());
+            bump(2);
+            while (curr_c != '*' && curr_c != '/') {
+                // Don't allow unclosed comments at end of file
+                if (curr_c.is_eof()) {
+                    throw LexError::UnexpectedEOF(comment_sp);
+                }
+                comment_sp.hi = get_pos();
+                bump();
+            }
+            bump(2);
+            skip_ws_and_comments();
+        }
+    }
+}
+
 Token Lexer::next_token() {
 
-    skip_ws_and_comments(this);
+    skip_ws_and_comments();
 
     TextPos start_pos = get_pos();
 
@@ -151,9 +150,6 @@ Token Lexer::tokenize_next(const TextPos& start_pos) {
         if (type.has_value()) {
             return Token(*type);
         }
-
-        // FIXME: Save lexed identifier
-        LOG(ident);
 
         return Token(Ident);
     }
@@ -303,7 +299,6 @@ Token Lexer::tokenize_next(const TextPos& start_pos) {
 
     case '\'': {
         bump();
-        TextPos lit_start_pos = get_pos();
 
         // Don't allow char literal to be empty
         if (curr_c == '\'') {
@@ -324,12 +319,9 @@ Token Lexer::tokenize_next(const TextPos& start_pos) {
             // Check for ending '\''
             if (curr_c == '\'') {
                 bump(); // go past ending '\''
-                throw LexError::Generic(Span(get_sf(), lit_start_pos, get_pos()),
+                throw LexError::Generic(Span(get_sf(), start_pos, get_pos()),
                     "Character literals can only contain one codepoint");
             }
-
-            // FIXME: Save lexed lifetime
-            LOG(lf);
 
             return Token(Lifetime);
         }
@@ -337,7 +329,7 @@ Token Lexer::tokenize_next(const TextPos& start_pos) {
         // Newlines and tabs aren't allowed inside characters
         if ((curr_c == '\n' || curr_c == '\r' || curr_c == '\t') && curr_c == '\'') {
             bump();
-            throw LexError::Generic(Span(get_sf(), lit_start_pos, get_pos()),
+            throw LexError::Generic(Span(get_sf(), start_pos, get_pos()),
                 "Special characters need to be written with escape symbols");
         }
 
@@ -379,27 +371,23 @@ Token Lexer::tokenize_next(const TextPos& start_pos) {
                 }
                 bump();
             }
-            throw LexError::Generic(Span(get_sf(), lit_start_pos, get_pos()),
+            throw LexError::Generic(Span(get_sf(), start_pos, get_pos()),
                 "Character literals can only contain one codepoint");
         }
 
         bump(); // go past ending '\''
-        
-        // FIXME: Save lexed char literal
-        LOG(ch);
 
         return Token(LitChar);
     }
 
     case '\"': {
         bump();
-        TextPos lit_start_pos = get_pos();
 
         std::string str;
         while (curr_c != '\"') {
             // The string literal reaches EOF
             if (curr_c.is_eof()) {
-                throw LexError::Generic(Span(get_sf(), lit_start_pos, get_pos()),
+                throw LexError::Generic(Span(get_sf(), start_pos, get_pos()),
                     "String literals missing end quote");
             }
 
@@ -430,9 +418,6 @@ Token Lexer::tokenize_next(const TextPos& start_pos) {
             str += ch;
         }
         bump(); // go past ending '\"'
-
-        // FIXME: Save lexed string literal
-        LOG(str);
 
         return Token(LitString);
     }
@@ -564,9 +549,6 @@ Token Lexer::lex_number(const TextPos& start_pos) {
     number += read_fraction(base, start_pos);
     // Multiply by exponent, if any
     number *= read_exponent(base, start_pos);
-
-    // FIXME: Save lexed string literal
-    LOG(number);
 
     return Token(LitInteger, Span(get_sf(), start_pos, get_pos()));
 }

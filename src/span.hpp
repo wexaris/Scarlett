@@ -6,7 +6,7 @@ struct SourceFile;
 struct TextPos {
     uint line = 1;
     uint col = 1;
-    uint idx = 0;
+    size_t idx = 0;
 
     inline TextPos operator+(const TextPos& other) {
         TextPos pos;

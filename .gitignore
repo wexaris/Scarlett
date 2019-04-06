@@ -1,7 +1,10 @@
 # IDE
-.vscode/*
+.vs/
+.vscode/
 
 # Project
-bin/*
-lib/*
-build/*
+bin/
+lib/
+build/
+
+src/_ivy/*

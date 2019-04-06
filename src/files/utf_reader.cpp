@@ -7,8 +7,6 @@ UTFReader::UTFReader(const std::string& filepath) :
 {}
 
 Codepoint UTFReader::read() {
-    assert(!sourcefile->is_free());
-
     uint8_t v1 = read_byte();
     
     if (v1 < 128) {
@@ -64,12 +62,11 @@ Codepoint UTFReader::read() {
 }
 
 char UTFReader::read_byte() {
-    int c = sourcefile->get();
+    char c = (*sourcefile)[index];
     
-    if (c == EOF || sourcefile->eof()) {
-        return '\0';
+    if (c != '\0') {
+        index++;
     }
 
-    index++;
     return c;
 }
