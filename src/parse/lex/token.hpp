@@ -14,9 +14,9 @@ struct Token {
     inline bool is_eof() const { return type == END; }
 
     /* Get the raw string that the token came from.
-    In case of string and char literals, and lifetimes,
-    the sourrounding quotes will be romeved. */
-    std::string_view raw() const;
+    If 'rm_quotes' is true, string literals, char literals, and lifetimes
+    will have their surrounding quotes removed. */
+    std::string_view raw(bool rm_quotes = false) const;
 
     inline const SourceFile* sourcefile() const { return span.source; }
     inline const TextPos& start() const         { return span.lo; }

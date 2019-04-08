@@ -6,16 +6,18 @@ Token::Token(TokenType t, Span sp) :
     span(mv(sp))
 {}
 
-std::string_view Token::raw() const {
+std::string_view Token::raw(bool rm_quotes) const {
     size_t lo = span.lo.idx;
     size_t hi = span.hi.idx;
     
-    if (type == LitString || type == LitChar) {
-        lo++;
-        hi--;
-    }
-    else if (type == Lifetime) {
-        lo++;
+    if (rm_quotes) {
+        if (type == LitString || type == LitChar) {
+            lo++;
+            hi--;
+        }
+        else if (type == Lifetime) {
+            lo++;
+        }
     }
     
     return span.source->get(lo, hi);
