@@ -33,6 +33,7 @@ set( SRC_FILES
     src/files/utf_reader.cpp
     src/files/codepoint.cpp
     src/errors/errors.cpp
+    src/util/interner.cpp
 )
 
 # GNUCXX compile options

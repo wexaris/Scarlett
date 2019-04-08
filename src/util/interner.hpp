@@ -4,37 +4,16 @@
 #include <unordered_map>
 
 class Interner {
-    std::unordered_map<std::string, ast::Name> names;
-    std::vector<shared<std::string>> strings;
+    std::unordered_map<std::string, ast::Name> string_id_map;
+    std::vector<shared<std::string>> interned_strings;
 
 public:
     explicit Interner() = default;
-    explicit Interner(std::vector<std::string> strs)
-    {
-        strings.reserve(strs.size());
-        for (const auto& s : strs) {
-            intern(s);
-        }
-    }
+    explicit Interner(std::vector<std::string> strs);
 
-    ast::Name intern(std::string str) {
-        ast::Name name{ strings.size() };
+    ast::Name intern(std::string str);
 
-        strings.push_back(mk_shared(str));
-        names[str] = name;
+    std::string get(const ast::Name& name) { return *interned_strings[name.id]; }
 
-        return name;
-    }
-
-    inline std::string get(const ast::Name& name) {
-        return *strings[name.id];
-    }
-
-    inline ast::Name* find(const std::string& str) {
-        auto name = names.find(str);
-        if (name != names.end()) {
-            return &name->second;
-        }
-        return nullptr;
-    }
+    ast::Name* find(const std::string& str);
 };
