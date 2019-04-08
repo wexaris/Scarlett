@@ -28,7 +28,6 @@ set( SRC_FILES
     src/parse/lex/lexer.cpp
     src/parse/lex/bump_reader.cpp
     src/parse/lex/token.cpp
-    src/parse/lex/token_type.cpp
     src/files/source_map.cpp
     src/files/source_file.cpp
     src/files/utf_reader.cpp

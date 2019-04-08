@@ -1,5 +1,7 @@
 #pragma once
 #include "errors/errors.hpp"
+#include "util/magic_enum.hpp"
+#include "common.hpp"
 
 enum TokenType {
     END = 0,
@@ -116,9 +118,27 @@ enum TokenType {
     ShrAssign,      // >>=
 };
 
-std::ostream& operator<<(std::ostream& os, const TokenType& tk);
-
 namespace token_type {
 
-    std::string as_str(TokenType ty);
+    static std::string to_string(TokenType ty) {
+        auto ty_str = magic_enum::enum_name<TokenType>(ty);
+        if (!ty_str.has_value()) {
+            auto err = FMT("invalid TokenType value '" << (int)ty << "' passed to 'token_type::to_string()'");
+            throw CompileError::Bug(err);
+        }
+        return std::string(ty_str.value());
+    }
+
+    static TokenType from_string(std::string str) {
+        auto ty_val = magic_enum::enum_cast<TokenType>(str);
+        if (!ty_val.has_value()) {
+            auto err = FMT("invalid TokenType value '" << str << "' passed to 'token_type::from_string()'");
+            throw CompileError::Bug(err);
+        }
+        return ty_val.value();
+    }
+}
+
+inline std::ostream& operator<<(std::ostream& os, const TokenType& ty) {
+    return os << token_type::to_string(ty);
 }
