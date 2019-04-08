@@ -1,5 +1,5 @@
 #include "bump_reader.hpp"
-#include "errors/lex_err.hpp"
+#include "errors/errors.hpp"
 
 UTFBumpReader::UTFBumpReader(const std::string& filepath) :
     reader(filepath)

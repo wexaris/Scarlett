@@ -1,5 +1,5 @@
 #include "lexer.hpp"
-#include "errors/lex_err.hpp"
+#include "errors/errors.hpp"
 #include "util/ranges.hpp"
 #include <unordered_map>
 #include <optional>
@@ -145,7 +145,7 @@ Token Lexer::tokenize_next(const TextPos& start_pos) {
             bump();
         } while (is_ident_cont(curr_c));
 
-        // Check idientifier for being a keyword
+        // Check identifier for being a keyword
         auto type = find_keyword(ident);
         if (type.has_value()) {
             return Token(*type);

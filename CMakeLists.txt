@@ -33,9 +33,7 @@ set( SRC_FILES
     src/files/source_file.cpp
     src/files/utf_reader.cpp
     src/files/codepoint.cpp
-    src/errors/compile_err.cpp
-    src/errors/parse_err.cpp
-    src/errors/lex_err.cpp
+    src/errors/errors.cpp
 )
 
 # GNUCXX compile options

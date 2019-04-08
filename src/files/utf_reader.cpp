@@ -1,6 +1,6 @@
 #include "utf_reader.hpp"
 #include "source_map.hpp"
-#include "errors/lex_err.hpp"
+#include "errors/errors.hpp"
 
 UTFReader::UTFReader(const std::string& filepath) :
     sourcefile(SourceMap::request(filepath))

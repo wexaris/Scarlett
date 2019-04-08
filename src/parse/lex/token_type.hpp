@@ -1,5 +1,5 @@
 #pragma once
-#include <string>
+#include "errors/errors.hpp"
 
 enum TokenType {
     END = 0,
