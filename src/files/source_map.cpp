@@ -12,7 +12,7 @@ SourceFile* SourceMap::find(const std::string& filepath) {
 }
 
 SourceFile* SourceMap::load(const std::string& filepath) {
-    files.push_back(new_unique(SourceFile, filepath));
+    files.push_back(new_unique<SourceFile>(filepath));
     return files.back().get();
 }
 

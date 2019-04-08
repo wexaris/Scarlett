@@ -17,28 +17,32 @@ template<typename T> using shared = std::shared_ptr<T>;
 #define LOG(x) std::cout << x << std::endl
 #define ERR(x) throw std::runtime_error(x)
 
-#define new_unique(x, ...) std::make_unique<x>(__VA_ARGS__)
-#define new_shared(x, ...) std::make_shared<x>(__VA_ARGS__)
-
-#define mk_unique(x) smart_ptr::make_unique(mv(x))
-#define mk_shared(x) smart_ptr::make_shared(mv(x))
-
-
-namespace smart_ptr {
-    /* Move some existing object into a unique pointer.
-    The original object will be invalidated. */
-    template<typename T>
-    constexpr unique<T> make_unique(T&& val) {
-        return unique<T>(new T(mv(val)));
-    }
-
-    /* Move some existing object into a shared pointer.
-    The original object will be invalidated. */
-    template<typename T>
-    constexpr shared<T> make_shared(T&& val) {
-        return shared<T>(new T(mv(val)));
-    }
+/* Construct a new unique pointer of type T, using the passed arguments. */
+template<typename T, typename... Args>
+constexpr unique<T> new_unique(Args... args) {
+    return std::make_unique<T>(args...);
 }
+
+/* Construct a new shared pointer of type T, using the passed arguments. */
+template<typename T, typename... Args>
+constexpr shared<T> new_shared(Args... args) {
+    return std::make_shared<T>(args...);
+}
+
+/* Construct a new unique pointer to the passed value.
+Accessing the original data after uniquifying would be undefined behavior. */
+template<typename T>
+constexpr unique<T> uniquify(T& val) {
+    return new_unique<T>(mv(val));
+}
+
+/* Construct a new shared pointer to the passed value.
+Accessing the original data after uniquifying would be undefined behavior. */
+template<typename T>
+constexpr shared<T> share(T& val) {
+    return new_shared<T>(mv(val));
+}
+
 
 /* Return a string with some character repeated 'n' times. */
 inline std::string repeat_char(int n, char c) {

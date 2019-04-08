@@ -16,7 +16,7 @@ long long timed_exec(const std::function<void(void)>& fun) {
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
 
-#define LOG_TIMED(X, Y) LOG(FMT(X << " : DONE (" << std::fixed << std::setprecision(2) << timed_exec(Y) << "ms)"))
+#define LOG_TIMED(NAME, F) LOG(FMT(NAME << " : DONE (" << std::fixed << std::setprecision(2) << timed_exec(F) << "ms)"))
 
 
 //////////////

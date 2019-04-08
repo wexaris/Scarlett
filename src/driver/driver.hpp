@@ -19,7 +19,7 @@ public:
     /* Create Driver given some program arguments.
     A Session will be created internally. */
     explicit Driver(const ProgramArgs& args)
-        : sess(new_shared(Session, args))
+        : sess(new_shared<Session>(ProgramArgs(args)))
     {}
 
     /* Begin the compilation process. */
