@@ -451,7 +451,7 @@ double Lexer::read_fraction(uint base, const TextPos& start_pos) {
         bump();
 
         // Read numbers, then divide until they're less than 1
-        double fract = read_numbers(10);
+        fract = read_numbers(10);
         while (fract >= 1) {
             fract /= 10.f;
         }
@@ -506,8 +506,6 @@ double Lexer::read_exponent(uint base, const TextPos& start_pos) {
 }
 
 Token Lexer::lex_number(const TextPos& start_pos) {
-    double number = 0;
-
     // Check binary, octal, hex prefixes
     uint base = 10;
     if (curr_c == '0') {
@@ -544,13 +542,17 @@ Token Lexer::lex_number(const TextPos& start_pos) {
     }
 
     // Read fraction numbers
-    number = read_numbers(base);
-    // Add fraction, if any
-    number += read_fraction(base, start_pos);
-    // Multiply by exponent, if any
-    number *= read_exponent(base, start_pos);
+    double num = read_numbers(base);
+    if (curr_c != '.' && curr_c != 'e' && curr_c != 'E') {
+        return Token(LitInteger, Span(get_sf(), start_pos, get_pos()), static_cast<TokenValue::IntType>(num));
+    }
 
-    return Token(LitInteger, Span(get_sf(), start_pos, get_pos()));
+    // Add fraction, if any
+    num += read_fraction(base, start_pos);
+    // Multiply by exponent, if any
+    num *= read_exponent(base, start_pos);
+
+    return Token(LitFloat, Span(get_sf(), start_pos, get_pos()), num);
 }
 
 Codepoint Lexer::read_hex_escape(uint num, Codepoint delim, const TextPos& start_pos) {
@@ -562,12 +564,12 @@ Codepoint Lexer::read_hex_escape(uint num, Codepoint delim, const TextPos& start
             // Critical failure
             // We can't guess how the literal was supposed to be terminated
             throw LexError::Generic(Span(get_sf(), start_pos, get_pos()),
-                "Incomplete nemeric escape");
+                "Incomplete numeric escape");
         }
         // Escape is shorter than expected
         if (curr_c == delim) {
             throw LexError::Generic(Span(get_sf(), start_pos, get_pos()),
-                "Nemeric escape is too short");
+                "Numeric escape is too short");
         }
         auto n = get_num(curr_c, 16);
         if (n.has_value()) {
@@ -576,14 +578,14 @@ Codepoint Lexer::read_hex_escape(uint num, Codepoint delim, const TextPos& start
         }
         else {
             throw LexError::Generic(Span(get_sf(), start_pos, get_pos()),
-                FMT("Tnvalid numeric escape: " << curr_c));
+                FMT("Invalid numeric escape: " << curr_c));
         }
         bump();
     }
 
     if (!is_char(number)) {
         throw LexError::Generic(Span(get_sf(), start_pos, get_pos()),
-            FMT("Tnvalid numeric escape: " << curr_c));
+            FMT("Invalid numeric escape: " << curr_c));
     }
 
     return Codepoint(number);
