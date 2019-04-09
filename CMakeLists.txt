@@ -22,6 +22,7 @@ include_directories( src/ )
 set( SRC_FILES
     src/main.cpp
     src/span.cpp
+    src/global.cpp
     src/driver/driver.cpp
     src/driver/session.cpp
     src/parse/parser.cpp

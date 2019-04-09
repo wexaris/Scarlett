@@ -46,4 +46,6 @@ void Driver::compile() {
     Parser parser = Parser(sess->infile);
 
     parser.parse();
+
+    global::free();
 }
