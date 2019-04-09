@@ -1,7 +1,6 @@
 #include "interner.hpp"
 
-Interner::Interner(std::vector<std::string> strs)
-{
+Interner::Interner(std::vector<std::string> strs) {
     interned_strings.reserve(strs.size());
     for (const auto& s : strs) {
         intern(s);

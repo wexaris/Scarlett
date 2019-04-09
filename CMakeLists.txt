@@ -25,6 +25,7 @@ set( SRC_FILES
     src/global.cpp
     src/driver/driver.cpp
     src/driver/session.cpp
+    src/parse/ast.cpp
     src/parse/parser.cpp
     src/parse/lex/lexer.cpp
     src/parse/lex/bump_reader.cpp

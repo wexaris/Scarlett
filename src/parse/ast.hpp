@@ -1,6 +1,8 @@
 #pragma once
 #include "common.hpp"
 
+using InternedString = shared<std::string>;
+
 namespace ast {
 
     struct Ident {
@@ -10,9 +12,9 @@ namespace ast {
     struct Name {
         size_t id;
 
-        Ident to_ident() const {
-            return Ident{ id };
-        }
+        inline Ident to_ident() const { return Ident{ id }; }
+
+        InternedString get_string() const;
     };
 
 }
