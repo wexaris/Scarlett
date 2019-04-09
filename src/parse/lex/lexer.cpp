@@ -132,8 +132,8 @@ Token Lexer::next_token() {
 
 Token Lexer::tokenize_next(const TextPos& start_pos) {
 
-    auto Token = [&](TokenType ty) {
-        return ::Token(ty, Span(get_sf(), start_pos, get_pos()));
+    auto Token = [&](TokenType ty, const TokenValue& val = TokenValue()) {
+        return ::Token(ty, Span(get_sf(), start_pos, get_pos()), val);
     };
 
     // Collect characters that would be part of an identifier

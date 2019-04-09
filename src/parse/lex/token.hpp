@@ -1,15 +1,39 @@
 #pragma once
+#include "util/interner.hpp"
 #include "token_type.hpp"
 #include "span.hpp"
+#include <variant>
 #include <iostream>
+
+struct TokenValue {
+    using IntType    = size_t;
+    using FloatType  = double;
+    using StrType    = ast::Name;
+
+    using DataVariant = std::variant<IntType, FloatType, StrType>;
+    DataVariant data;
+
+    TokenValue() = default;
+    TokenValue(IntType v) : data(v) {}
+    TokenValue(FloatType v) : data(v) {}
+    TokenValue(StrType v) : data(v) {}
+
+    inline void set(DataVariant v) { data = v; }
+
+    inline IntType get_i() const   { return std::get<0>(data); }
+    inline FloatType get_f() const { return std::get<1>(data); }
+    inline StrType get_s() const   { return std::get<2>(data); }
+};
 
 struct Token {
     
     TokenType type  = END;
     Span span       = Span();
 
+    TokenValue val  = TokenValue();
+
     Token() = default;
-    Token(TokenType t, Span sp);
+    Token(TokenType t, Span sp, const TokenValue& val = TokenValue());
 
     inline bool is_eof() const { return type == END; }
 

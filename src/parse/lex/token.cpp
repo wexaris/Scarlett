@@ -1,9 +1,10 @@
 #include "token.hpp"
 #include "files/source_file.hpp"
 
-Token::Token(TokenType t, Span sp) :
+Token::Token(TokenType t, Span sp, const TokenValue& val) :
     type(t),
-    span(mv(sp))
+    span(mv(sp)),
+    val(val)
 {}
 
 std::string_view Token::raw(bool rm_quotes) const {
