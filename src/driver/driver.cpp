@@ -16,7 +16,10 @@ long long timed_exec(const std::function<void(void)>& fun) {
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
 
-#define LOG_TIMED(NAME, F) LOG(FMT(NAME << " : DONE (" << std::fixed << std::setprecision(2) << timed_exec(F) << "ms)"))
+inline void log_timed(const std::string& name, const std::function<void(void)>& fun) {
+    auto time = timed_exec(fun);
+    LOG(name << " : DONE (" << std::fixed << std::setprecision(2) << time << "ms)");
+}
 
 
 //////////////
@@ -31,7 +34,7 @@ void Driver::compile() {
         ERR("Input file missing");
     }
 
-    LOG_TIMED("Read lexer chars", [&]() {
+    log_timed("Read lexer chars", [&]() {
         Lexer lex(sess->infile);
         Token tok = lex.next_token();
         while (!tok.is_eof()) {
