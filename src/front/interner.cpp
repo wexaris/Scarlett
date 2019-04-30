@@ -2,6 +2,10 @@
 
 namespace scar {
 
+    Interner::Interner() {
+        intern("");
+    }
+
     ast::Name Interner::intern(std::string str) {
         auto find_str = find(str);
         if (find_str.has_value()) {
