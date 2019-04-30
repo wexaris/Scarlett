@@ -14,6 +14,7 @@ namespace scar {
         TokenType type;
         Span span;
 
+        bool valid      = true;
         int_t val_i     = 0;
         float_t val_f   = 0;
         str_t val_s     = { 0 };
@@ -23,7 +24,7 @@ namespace scar {
         TextPos& hi = span.hi;
 
         Token() = default;
-        Token(TokenType ty, Span sp);
+        Token(TokenType ty, Span sp, bool valid = true);
         Token(TokenType ty, Span sp, int_t v);
         Token(TokenType ty, Span sp, float_t v);
         Token(TokenType ty, Span sp, str_t v);
@@ -36,7 +37,8 @@ namespace scar {
             val_s = other.val_s;
         }
 
-        inline bool is_eof() const { return type == END; }
+        inline bool is_valid() const    { return valid; }
+        inline bool is_eof() const      { return type == END; }
     };
 
 }

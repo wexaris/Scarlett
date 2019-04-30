@@ -24,13 +24,13 @@ namespace scar {
         Token lex_number();
 
         /* Read and calculate a number in some base. */
-        void read_numbers(unsigned int base);
+        unsigned int read_numbers(unsigned int base);
         /* Read and calculate a fraction.
         Base only used in case of errors. */
-        bool read_fraction(unsigned int base);
+        void read_fraction();
         /* Read and calculate an exponent.
         Base only used in case of errors. */
-        bool read_exponent(unsigned int base);
+        bool read_exponent();
 
         /* Read a hexadecimal escape symbol with some given length. */
         Codepoint read_hex_escape(unsigned int len, Codepoint delim);

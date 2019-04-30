@@ -457,59 +457,57 @@ namespace scar {
                 }
             }
         }
-
-        // Read fraction numbers
+        // Read whole numbers
         read_numbers(base);
-        if (curr() != '.' && curr() != 'e' && curr() != 'E') {
+
+        bool is_floating = ((curr() == '.' && next().is_dec()) || curr() == 'e' || curr() == 'E');
+        if (is_floating) {
+            // Floating but not base 10
+            if (base != 10) {
+                read_fraction();
+                read_exponent();
+                log::get_default()->critical("{}: only decimal numbers support fractions and exponents", curr_span());
+                return Token(LitFloat, curr_span(), false);
+            }
+        }
+        else {
+            // Not floating
             return Token(LitInteger, curr_span(), curr_name());
         }
 
-        // Add fraction, if any
-        valid &= read_fraction(base);
-        // Multiply by exponent, if any
-        valid &= read_exponent(base);
+        read_fraction();
+        valid &= read_exponent();
 
+        if (!valid) {
+            return Token(LitFloat, curr_span(), false);
+        }
         return Token(LitFloat, curr_span(), curr_name());
     }
 
-    void Lexer::read_numbers(unsigned int base) {
-        // Read characters 
+    unsigned int Lexer::read_numbers(unsigned int base) {
+        unsigned int num_c = 0;
+
         auto ret = range::get_num(curr().val, base);
         while (ret.has_value()) {
+            num_c++;
             bump();
             ret = range::get_num(curr().val, base);
         }
 
-        return;
+        return num_c;
     }
 
-    bool Lexer::read_fraction(unsigned int base) {
-        double fract = 0.f;
-
+    void Lexer::read_fraction() {
+        // Check if this is a valid fraction.
+        // Just checking the dot would work,
+        // but that would disallow using methods on numeric literals.
         if (curr() == '.' && next().is_dec()) {
-            bump();
-
-            // Read numbers, then divide until they're less than 1
+            bump(); // skip dot
             read_numbers(10);
-
-            while (fract >= 1) {
-                fract /= 10.f;
-            }
-
-            // Make sure the base is ten
-            // This isn't done at the start, since this'll give better errors
-            if (base != 10) {
-                bump();
-                log::get_default()->critical("{}: only decimal numbers can have floating point values", curr_span());
-            }
         }
-
-        return fract;
     }
 
-    bool Lexer::read_exponent(unsigned int base) {
-        double expo = 1;
-
+    bool Lexer::read_exponent() {
         if (curr() == 'e' || curr() == 'E') {
             bump();
 
@@ -517,52 +515,53 @@ namespace scar {
                 bump();
             }
 
-            // Make sure exponent has value
-            if (!curr().is_dec()) {
-                bump();
-                log::get_default()->critical("{}: exponent missing value", curr_span());
+            // Make sure exponent has valid value
+            if (curr().is_dec()) {
+                read_numbers(10);
+                return true;
             }
-
-            read_numbers(10);
-
-            // Make sure the base is ten
-            // This isn't done at the start, since this'll give better errors
-            if (base != 10) {
-                bump();
-                log::get_default()->critical("{}: only decimal numbers can have exponents", curr_span());
+            else if (curr().is_hex()) {
+                read_numbers(16);
+                return false;
+            }
+            else {
+                log::get_default()->critical("{}: exponent requires a value", curr_span());
+                return false;
             }
         }
-
-        return expo;
+        return true;
     }
 
     Codepoint Lexer::read_hex_escape(unsigned int num, Codepoint delim) {
         uint32_t number = 0;
 
-        for (unsigned int i = 0; i < num; i++) {
-            // File EOF in escape
+        for (; num > 0; num--) {
             if (curr().is_eof()) {
-                // Critical failure
-                // We can't guess how the literal was supposed to be terminated
                 log::get_default()->critical("{}: incomplete numeric escape", curr_span());
+                return Codepoint(0);
             }
-            // Escape is shorter than expected
             if (curr() == delim) {
-                log::get_default()->critical("{}: numeric escape is too short", curr_span());
+                log::get_default()->error("{}: numeric escape is too short", curr_span());
+                number = 0xFFFD;
+                break;
             }
+
             auto n = range::get_num(curr().val, 16);
             if (n.has_value()) {
                 number *= 16;
                 number += *n;
             }
             else {
-                log::get_default()->critical("{}: invalid numeric escape: '{}'", curr_span(), curr());
+                log::get_default()->error("{}: invalid numeric escape: '{}'", curr_span(), curr_str());
+                number = 0xFFFD;
+                break;
             }
             bump();
         }
 
         if (!range::is_char(number)) {
-            log::get_default()->critical("{}: invalid numeric escape: '{}'", curr_span(), curr());
+            log::get_default()->error("{}: invalid numeric escape: '{}'", curr_span(), curr_str());
+            number = 0xFFFD;
         }
 
         return Codepoint(number);

@@ -3,9 +3,10 @@
 
 namespace scar {
 
-    Token::Token(TokenType ty, Span sp) :
+    Token::Token(TokenType ty, Span sp, bool valid) :
         type(ty),
-        span(sp)
+        span(sp),
+        valid(valid)
     {}
     Token::Token(TokenType ty, Span sp, int_t v) :
         Token(ty, sp)
