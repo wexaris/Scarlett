@@ -7,4 +7,5 @@ bin/
 lib/
 build/
 
-src/_ivy/*
+# To be refactored
+/src/_*/*

@@ -1,26 +1,31 @@
 #pragma once
-#include "common.hpp"
+#include "cmd_args/args.hpp"
 
-using ProgramArgs = std::vector<std::string>;
-ProgramArgs compose_program_args(unsigned argc, const char* argv[]);
+namespace scar {
 
-struct Session {
+    class Session {
 
-    std::string infile;
-    std::string outfile;
+    private:
+        Session() = default;
+        Session(const Session&) = delete;
 
-    std::string package_name;
+        inline void operator=(const Session&) = delete;
 
-	unsigned optimize_lvl = 0;
-	bool include_debug_info = false;
+        /* Updates the systems that respond to command line arguments. */
+        void apply_args();
 
-    enum OutputType {
-        BIN,
-        LIB
-    } output_type = BIN;
+    public:
+        args::ParsedArgs args;
 
-public:
-    Session(const ProgramArgs& args);
+        static Session& instance() {
+            static Session session;
+            return session;
+        }
 
-    void show_help() const;
-};
+        static void init(int argc, const char** argv) {
+            instance().args = scar::args::parse(argc, argv);
+            instance().apply_args();
+        }
+    };
+
+}

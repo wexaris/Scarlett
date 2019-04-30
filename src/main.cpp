@@ -1,11 +1,21 @@
+#include "cmd_args/args.hpp"
 #include "driver/driver.hpp"
+#include "util/early_exit.hpp"
 
-int main(uint argc, const char* argv[]) {
-    
-    ProgramArgs args = compose_program_args(argc, argv);
-    Driver driver = Driver(args);
+int main(int argc, const char* argv[]) {
 
-    driver.compile();
-    
-    return EXIT_SUCCESS;
+    try {
+        scar::Session::init(argc, argv);
+
+        scar::Driver driver;
+        driver.run();
+    }
+    catch (const scar::FatalError& e) {
+        return e.code;
+    }
+    catch (const scar::EarlyExit& e) {
+        return e.code;
+    }
+
+    return 0;
 }

@@ -16,32 +16,26 @@ set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/${BUILD_TYPE} )
 set( CMAKE_CXX_STANDARD 17 )
 
 # set inlude path
-include_directories( src/ )
+include_directories(
+    "src/"
+    "fmt/include/"
+)
 
 # all of the source files to compile
 set( SRC_FILES
     src/main.cpp
-    src/span.cpp
-    src/global.cpp
+    src/cmd_args/args.cpp
     src/driver/driver.cpp
-    src/driver/session.cpp
-    src/parse/ast.cpp
-    src/parse/parser.cpp
-    src/parse/lex/lexer.cpp
-    src/parse/lex/bump_reader.cpp
-    src/parse/lex/token.cpp
-    src/files/source_map.cpp
-    src/files/source_file.cpp
-    src/files/utf_reader.cpp
-    src/files/codepoint.cpp
-    src/errors/errors.cpp
-    src/util/interner.cpp
+    src/front/lex/lexer.cpp
+    src/front/lex/utf_reader.cpp
+    src/front/lex/codepoint.cpp
+    src/front/files/source.cpp
+    src/front/token_type.cpp
+    src/log/logger.cpp
 )
 
 # GNUCXX compile options
 if( CMAKE_COMPILER_IS_GNUCXX )
-    message( "\n-- Setting GNU C/C++ compile options" )
-
     # set universal parameters
     add_compile_options( -pedantic -Wall -Wextra -Werror )
 
@@ -53,4 +47,8 @@ if( CMAKE_COMPILER_IS_GNUCXX )
     endif()
 endif()
 
+add_subdirectory( fmt )
+
 add_executable( scar ${SRC_FILES} )
+
+target_link_libraries( scar fmt )

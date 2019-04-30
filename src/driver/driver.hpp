@@ -1,29 +1,16 @@
 #pragma once
 #include "session.hpp"
+#include "front/ast.hpp"
 
-/* The backbone of the compilation process.
-Takes care of handling all the other smaller parts of compilation. */
-class Driver {
+namespace scar {
 
-    /* The settings pertaining to the current compilation.
-    Includes optimisation and debugging options, input and ouput file locations,
-    information about the package, etc. */
-    shared<Session> sess;
+    class Driver {
 
-public:
-    /* Create Driver with a pre-existing Session. */
-    explicit Driver(std::shared_ptr<Session> sess)
-        : sess(sess)
-    {}
+    public:
+        Driver() = default;
+        ~Driver() = default;
 
-    /* Create Driver given some program arguments.
-    A Session will be created internally. */
-    explicit Driver(const ProgramArgs& args)
-        : sess(new_shared<Session>(ProgramArgs(args)))
-    {}
+        void run();
+    };
 
-    /* Begin the compilation process. */
-    void compile();
-
-    const std::shared_ptr<Session> get_session() const { return sess; }
-};
+}
