@@ -21,11 +21,7 @@ namespace scar {
             inline bool is_open() const { return file.is_open(); }
             inline bool is_eof() const  { return file.eof(); }
 
-            std::string name() const {
-                auto dash_loc = path.find_last_of('/');
-                auto name_loc = (dash_loc == 0 && path[0] != '/') ? 0 : dash_loc + 1;
-                return path.substr(name_loc);
-            }
+            std::string name() const;
 
             std::string read(size_t start, size_t count);
         };

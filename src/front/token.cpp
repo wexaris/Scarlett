@@ -3,6 +3,27 @@
 
 namespace scar {
 
+    Token::Token(TokenType ty, Span sp) :
+        type(ty),
+        span(sp)
+    {}
+    Token::Token(TokenType ty, Span sp, int_t v) :
+        Token(ty, sp)
+    {
+        val_i = v;
+    }
+    Token::Token(TokenType ty, Span sp, float_t v) :
+        Token(ty, sp)
+    {
+        val_f = v;
+    }
+    Token::Token(TokenType ty, Span sp, str_t v) :
+        Token(ty, sp)
+    {
+        val_s = v;
+    }
+
+
     namespace ttype {
 
         std::string to_str(TokenType ty) {

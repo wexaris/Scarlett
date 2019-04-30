@@ -1,7 +1,7 @@
 #pragma once
 #include "token_type.hpp"
-#include "ast.hpp"
 #include "span.hpp"
+#include "ast.hpp"
 
 namespace scar {
 
@@ -14,30 +14,21 @@ namespace scar {
         TokenType type;
         Span span;
 
-        int_t val_i;
-        float_t val_f;
-        str_t val_s;
+        int_t val_i     = 0;
+        float_t val_f   = 0;
+        str_t val_s     = { 0 };
 
         source::file_ptr_t::weak_type file = span.file;
         TextPos& lo = span.lo;
         TextPos& hi = span.hi;
 
         Token() = default;
-        Token(TokenType ty, Span sp) :
-            type(ty),
-            span(sp)
-        {}
-        Token(TokenType ty, Span sp, int_t v) : Token(ty, sp) {
-            val_i = v;
-        }
-        Token(TokenType ty, Span sp, float_t v) : Token(ty, sp) {
-            val_f = v;
-        }
-        Token(TokenType ty, Span sp, str_t v) : Token(ty, sp) {
-            val_s = v;
-        }
+        Token(TokenType ty, Span sp);
+        Token(TokenType ty, Span sp, int_t v);
+        Token(TokenType ty, Span sp, float_t v);
+        Token(TokenType ty, Span sp, str_t v);
 
-        void operator=(const Token& other) {
+        inline void operator=(const Token& other) {
             type = other.type;
             span = other.span;
             val_i = other.val_i;

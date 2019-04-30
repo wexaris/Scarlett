@@ -1,4 +1,5 @@
 #include "lexer.hpp"
+#include "front/interner.hpp"
 #include "log/logging.hpp"
 
 namespace scar {
@@ -567,4 +568,7 @@ namespace scar {
         return Codepoint(number);
     }
 
+    ast::Name Lexer::curr_name() const {
+        return Interner::instance().intern(std::move(curr_str()));
+    }
 }

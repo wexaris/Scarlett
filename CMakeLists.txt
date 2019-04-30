@@ -30,7 +30,9 @@ set( SRC_FILES
     src/front/lex/utf_reader.cpp
     src/front/lex/codepoint.cpp
     src/front/files/source.cpp
-    src/front/token_type.cpp
+    src/front/interner.cpp
+    src/front/token.cpp
+    src/log/registry.cpp
     src/log/logger.cpp
 )
 

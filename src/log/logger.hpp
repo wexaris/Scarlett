@@ -1,8 +1,5 @@
 #pragma once
 #include "sinks/sink.hpp"
-#include "util/logger_ex.hpp"
-#include "util/early_exit.hpp"
-#include "settings.hpp"
 #include <functional>
 #include <atomic>
 #include <memory>
@@ -27,27 +24,12 @@ namespace scar {
             virtual void sink_it(Log& msg);
             virtual void flush_();
 
-            inline void internal_err(std::string_view msg) const {
-                fmt::print(stderr, "[{}] {}\n", this->name, msg);
-            }
+            void throw_if_critical(LogLevel lvl);
 
-            inline void throw_if_critical(LogLevel lvl) {
-                if (lvl >= Critical) {
-                    throw FatalError(999);
-                }
-            }
+            void internal_err(std::string_view msg) const;
 
-            inline LogLevel update_log_level(LogLevel lvl) {
-                return
-                    (lvl == Debug && !SCAR_DEBUG_ENABLED) ? Off :
-                    (lvl == Warning && options.warn_as_err) ? Error :
-                    (lvl == Warning && options.no_warn) ? Off : lvl;
-            }
-
-            inline bool should_log(LogLevel lvl) const {
-                return lvl == Off ? false :
-                    (lvl == Warning && !options.no_warn) ? false : true;
-            }
+            LogLevel update_log_level(LogLevel lvl);
+            bool should_log(LogLevel lvl) const;
 
             inline void increase_err_count() { error_count++; }
 

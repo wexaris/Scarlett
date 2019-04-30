@@ -8,7 +8,6 @@ namespace scar {
 
     public:
         Driver() = default;
-        ~Driver() = default;
 
         void run();
     };

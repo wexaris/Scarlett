@@ -1,6 +1,5 @@
 #pragma once
 #include "utf_reader.hpp"
-#include "front/interner.hpp"
 #include "front/token.hpp"
 #include <string>
 
@@ -25,15 +24,12 @@ namespace scar {
         Token lex_number();
 
         /* Read and calculate a number in some base. */
-        //uint read_numbers(uint base);
         void read_numbers(unsigned int base);
         /* Read and calculate a fraction.
         Base only used in case of errors. */
-        //double read_fraction(uint base, const TextPos& start_pos);
         bool read_fraction(unsigned int base);
         /* Read and calculate an exponent.
         Base only used in case of errors. */
-        //double read_exponent(uint base, const TextPos& start_pos);
         bool read_exponent(unsigned int base);
 
         /* Read a hexadecimal escape symbol with some given length. */
@@ -73,9 +69,7 @@ namespace scar {
 
         /* Interns the current token's string and returns its id.
         Starts from the stored token start position. */
-        inline ast::Name curr_name() const {
-            return Interner::instance().intern(std::move(curr_str()));
-        }
+        ast::Name curr_name() const;
     };
 
 }

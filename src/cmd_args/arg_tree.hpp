@@ -17,15 +17,11 @@ namespace scar {
                 flags.push_back(std::move(flag));
             }
 
-            std::optional<std::vector<Argument>::iterator> find(std::string_view flag) {
-                for (auto f_iter = flags.begin(); f_iter != flags.end(); f_iter++) {
-                    if (*f_iter == flag)
-                        return f_iter;
-                }
-                return std::nullopt;
-            }
+            std::optional<std::vector<Argument>::iterator> find(std::string_view flag);
 
-            inline bool contains(std::string_view flag) { return find(flag).has_value(); }
+            inline bool contains(std::string_view flag) {
+                return find(flag).has_value();
+            }
         };
 
         struct ArgTreeList {
@@ -37,14 +33,7 @@ namespace scar {
                 flag_trees.push_back(std::move(ft));
             }
 
-            std::optional<std::vector<Argument>> find(std::string_view flag) const {
-                for (auto& ft : flag_trees) {
-                    if (*ft.flags.begin() == flag) {
-                        return ft.flags;
-                    }
-                }
-                return std::nullopt;
-            }
+            std::optional<std::vector<Argument>> find(std::string_view flag) const;
 
             inline bool contains(std::string_view flag) const {
                 return find(flag).has_value();

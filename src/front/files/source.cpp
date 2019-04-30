@@ -30,6 +30,12 @@ namespace scar {
             return str_buff;
         }
 
+        std::string SourceFile::name() const {
+            auto dash_loc = path.find_last_of('/');
+            auto name_loc = (dash_loc == 0 && path[0] != '/') ? 0 : dash_loc + 1;
+            return path.substr(name_loc);
+        }
+
 
         bool SourceMap::contains(std::string_view path) const {
             for (auto& f : files) {
