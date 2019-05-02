@@ -360,12 +360,12 @@ namespace scar {
                     bump();
                 }
                 log::get_default()->error("{}: character literals can only contain one codepoint", curr_span());
-                return scar::Token(LitChar, curr_span(), Interner::instance().intern(curr_str()));
+                return scar::Token(LitChar, curr_span(), false);
             }
 
-            bump(); // go past ending '\''
+            bump(); // go past ending quote
 
-            return Token(LitChar);
+            return scar::Token(LitChar, curr_span(), curr_name());
         }
 
         case '\"': {
@@ -407,9 +407,9 @@ namespace scar {
 
                 str += ch;
             }
-            bump(); // go past ending '\"'
+            bump(); // go past ending quote
 
-            return Token(LitString);
+            return scar::Token(LitString, curr_span(), curr_name());
         }
 
         default:
