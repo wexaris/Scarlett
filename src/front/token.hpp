@@ -19,10 +19,6 @@ namespace scar {
         float_t val_f   = 0;
         str_t val_s     = { 0 };
 
-        source::file_ptr_t::weak_type file = span.file;
-        TextPos& lo = span.lo;
-        TextPos& hi = span.hi;
-
         Token() = default;
         Token(TokenType ty, Span sp, bool valid = true);
         Token(TokenType ty, Span sp, int_t v);
