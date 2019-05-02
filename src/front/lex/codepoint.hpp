@@ -49,13 +49,6 @@ struct fmt::formatter<scar::Codepoint> {
 
     template <typename FormatContext>
     auto format(const scar::Codepoint& c, FormatContext& ctx) {
-        auto cp_str = c.to_str();
-        if (cp_str == "{") {
-            cp_str = "{{";
-        }
-        else if (cp_str == "}") {
-            cp_str = "}}";
-        }
-        return fmt::format_to(ctx.out(), cp_str);
+        return fmt::format_to(ctx.out(), "{}", c.to_str());
     }
 };
