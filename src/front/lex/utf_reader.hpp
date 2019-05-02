@@ -9,7 +9,6 @@ namespace scar {
 
     private:
         source::file_ptr_t sourcefile;
-        std::string buffer;
         size_t next_index = 0;
         bool eof = false;
 
@@ -18,15 +17,11 @@ namespace scar {
         Codepoint curr_cp;
         Codepoint next_cp;
 
-        void fill_buffer();
         char read_byte();
         Codepoint read();
 
     public:
         explicit UTFReader(std::string_view path);
-        ~UTFReader() {
-            sourcefile->close();
-        }
 
         void bump(unsigned int n = 1);
 

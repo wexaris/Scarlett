@@ -6,34 +6,37 @@ namespace scar {
 
         SourceFile::SourceFile(std::string_view path) :
             file(path.data()),
-            path(std::string(path))
+            path(path)
         {
             if (!file.is_open()) {
                 log::get_default()->critical("failed to open file {}", path);
             }
-        }
 
-        std::string SourceFile::read(size_t start, size_t count) {
-            if (!is_open()) {
-                open();
-            }
+            file.seekg(0, file.end);
+            auto len = file.tellg();
+            file.seekg(0, file.beg);
 
-            char* buff = new char[count];
-            memset(buff, '\0', count);
-
-            file.seekg(start);
-            file.read(buff, count);
-
-            std::string str_buff = buff;
+            char* buff = new char[1 + len];
+            file.read(buff, len);
+            buff[file.gcount()] = '\0';
+            text = buff;
             delete[] buff;
 
-            return str_buff;
+            file.close();
         }
 
-        std::string SourceFile::name() const {
+        std::string_view SourceFile::read(size_t start, size_t count) const {
+            return std::string_view(text).substr(start, count);
+        }
+
+        char SourceFile::read(size_t pos) const {
+            return text[pos];
+        }
+
+        std::string_view SourceFile::name() const {
             auto dash_loc = path.find_last_of('/');
             auto name_loc = (dash_loc == 0 && path[0] != '/') ? 0 : dash_loc + 1;
-            return path.substr(name_loc);
+            return std::string_view(path).substr(name_loc);
         }
 
 

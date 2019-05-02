@@ -9,7 +9,7 @@ namespace scar {
         sourcefile(source::SourceMap::instace().load(path))
     {
         next_cp = read();
-        curr_cp = read();
+        bump();
     }
 
     void UTFReader::bump(unsigned int n) {
@@ -23,34 +23,25 @@ namespace scar {
             }
 
             curr_cp = next_cp;
+            curr_pos.idx = next_index++;
+
+            if (curr_cp.is_eof()) {
+                eof = true;
+                return;
+            }
 
             next_cp = read();
         }
     }
 
-    inline void UTFReader::fill_buffer() {
-        buffer = sourcefile->read(next_index, BUFFER_READ_SIZE);
-    }
-
     char UTFReader::read_byte() {
-        if (next_index % (BUFFER_READ_SIZE - 1) == 0) {
-            fill_buffer();
+        if (is_eof()) {
+            return '\0';
         }
-
-        char c = buffer[next_index];
-        if (c == '\0') {
-            eof = true;
-        }
-        else {
-            next_index++;
-        }
-
-        return c;
+        return sourcefile->read(next_index);
     }
 
     Codepoint UTFReader::read() {
-        curr_pos.idx = next_index;
-
         uint8_t v1 = read_byte();
 
         if (v1 < 128) {

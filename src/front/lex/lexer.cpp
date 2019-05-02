@@ -568,6 +568,6 @@ namespace scar {
     }
 
     ast::Name Lexer::curr_name() const {
-        return Interner::instance().intern(std::move(curr_str()));
+        return Interner::instance().intern(std::string(curr_str()));
     }
 }
