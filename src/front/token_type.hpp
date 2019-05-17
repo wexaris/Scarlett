@@ -87,6 +87,9 @@ namespace scar {
 
         /// Operators
         Not,            // !
+        BitNot,         // ~
+        PlusPlus,       // ++
+        MinusMinus,     // --
 
         Eq,             // ==
         NotEq,          // !=
@@ -102,8 +105,8 @@ namespace scar {
         Percent,        // %
         LogicAnd,       // &&
         LogicOr,        // ||
-        And,            // &
-        Or,             // |
+        BitAnd,         // &
+        BitOr,          // |
         Caret,          // ^
         Shl,            // <<
         Shr,            // >>

@@ -183,6 +183,9 @@ namespace scar {
                 return Token(NotEq);
             }
             return Token(Not);
+        case '~':
+            bump();
+            return Token(BitNot);
 
         case '=':
             bump();
@@ -221,12 +224,20 @@ namespace scar {
                 bump();
                 return Token(PlusAssign);
             }
+            else if (curr() == '+') {
+                bump();
+                return Token(PlusPlus);
+            }
             return Token(Plus);
         case '-':
             bump();
             if (curr() == '=') {
                 bump();
                 return Token(MinusAssign);
+            }
+            else if (curr() == '-') {
+                bump();
+                return Token(MinusMinus);
             }
             return Token(Minus);
         case '*':
@@ -260,7 +271,7 @@ namespace scar {
                 bump();
                 return Token(AndAssign);
             }
-            return Token(And);
+            return Token(BitAnd);
         case '|':
             bump();
             if (curr() == '|') {
@@ -271,7 +282,7 @@ namespace scar {
                 bump();
                 return Token(OrAssign);
             }
-            return Token(Or);
+            return Token(BitOr);
         case '^':
             bump();
             if (curr() == '=') {

@@ -88,56 +88,59 @@ namespace scar {
             case F32:           return "f32";
             case F64:           return "f64";
             
-            case Meh:           return "_";
+            case Meh:           return "'_'";
             
-            case Semi:          return ";";
-            case Col:           return ":";
-            case Scope:         return "::";
-            case Comma:         return ",";
-            case Dot:           return ".";
-            case DotDot:        return "..";
-            case DotDotDot:     return "...";
+            case Semi:          return "';'";
+            case Col:           return "':'";
+            case Scope:         return "'::'";
+            case Comma:         return "','";
+            case Dot:           return "'.'";
+            case DotDot:        return "'..'";
+            case DotDotDot:     return "'...'";
             
-            case Lparen:        return "(";
-            case Rparen:        return ")";
-            case Lbrack:        return "[";
-            case Rbrack:        return "]";
-            case Lbrace:        return "{";
-            case Rbrace:        return "}";
+            case Lparen:        return "'('";
+            case Rparen:        return "')'";
+            case Lbrack:        return "'['";
+            case Rbrack:        return "']'";
+            case Lbrace:        return "'{'";
+            case Rbrace:        return "'}'";
             
-            case Not:           return "!";
+            case Not:           return "'!'";
+            case BitNot:        return "'~'";
+            case PlusPlus:      return "'++'";
+            case MinusMinus:    return "'--'";
             
-            case Eq:            return "==";
-            case NotEq:         return "!=";
-            case Greater:       return ">";
-            case GreaterEq:     return ">=";
-            case Lesser:        return "<";
-            case LesserEq:      return "<=";
+            case Eq:            return "'=='";
+            case NotEq:         return "'!='";
+            case Greater:       return "'>'";
+            case GreaterEq:     return "'>='";
+            case Lesser:        return "'<'";
+            case LesserEq:      return "'<='";
             
-            case Plus:          return "+";
-            case Minus:         return "-";
-            case Star:          return "*";
-            case Slash:         return "/";
-            case Percent:       return "%";
-            case LogicAnd:      return "&&";
-            case LogicOr:       return "||";
-            case And:           return "&";
-            case Or:            return "|";
-            case Caret:         return "^";
-            case Shl:           return "<<";
-            case Shr:           return ">>";
+            case Plus:          return "'+'";
+            case Minus:         return "'-'";
+            case Star:          return "'*'";
+            case Slash:         return "'/'";
+            case Percent:       return "'%'";
+            case LogicAnd:      return "'&&'";
+            case LogicOr:       return "'||'";
+            case BitAnd:        return "'&'";
+            case BitOr:         return "'|'";
+            case Caret:         return "'^'";
+            case Shl:           return "'<<'";
+            case Shr:           return "'>>'";
             
-            case Assign:        return "=";
-            case PlusAssign:    return "+=";
-            case MinusAssign:   return "-=";
-            case MulAssign:     return "*=";
-            case DivAssign:     return "/=";
-            case ModAssign:     return "%=";
-            case AndAssign:     return "&=";
-            case OrAssign:      return "|=";
-            case XorAssign:     return "^=";
-            case ShlAssign:     return "<<=";
-            case ShrAssign:     return "=>>";
+            case Assign:        return "'='";
+            case PlusAssign:    return "'+='";
+            case MinusAssign:   return "'-='";
+            case MulAssign:     return "'*='";
+            case DivAssign:     return "'/='";
+            case ModAssign:     return "'%='";
+            case AndAssign:     return "'&='";
+            case OrAssign:      return "'|='";
+            case XorAssign:     return "'^='";
+            case ShlAssign:     return "'<<='";
+            case ShrAssign:     return "'=>>'";
 
             default:
                 log::get_default()->debug("token.cpp: missing TokenType string for type {}", (int)ty);
