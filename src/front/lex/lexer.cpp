@@ -134,7 +134,7 @@ namespace scar {
                 return Token(*type);
             }
 
-            return Token(Ident);
+            return scar::Token(Ident, curr_span(), curr_name());
         }
 
         // FIXME: add number lexing
