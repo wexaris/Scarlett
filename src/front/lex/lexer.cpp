@@ -420,6 +420,82 @@ namespace scar {
         return Token(END);
     }
 
+    size_t str_to_int(std::string_view str) {
+        size_t val = 0;
+        unsigned int base = 10;
+        unsigned int pos = 0;
+
+        if (str.size() > 2) {
+            if (str[0] == '0') {
+                if (str[1] == 'b') {
+                    base = 2;
+                    pos = 2;
+                }
+                else if (str[1] == '0') {
+                    base = 8;
+                    pos = 2;
+                }
+                else if (str[1] == 'x') {
+                    base = 16;
+                    pos = 2;
+                }
+            }
+        }
+
+        for (; pos < str.size(); pos++) {
+            val *= base;
+            val += *range::get_num(str[pos], base);
+        }
+
+        return val;
+    }
+    double str_to_float(std::string_view str) {
+        double val = 0;
+        unsigned int pos = 0;
+
+        for (; range::is_dec(str[pos]); pos++) {
+            val *= 10;
+            val += *range::get_num(str[pos], 10);
+        }
+
+        if (str[pos] == '.') {
+            pos++;
+            double div_pow = 1;
+
+            for (; range::is_dec(str[pos]); pos++) {
+                div_pow *= 10;
+                val += *range::get_num(str[pos], 10) / div_pow;
+                if (pos == str.size() - 1) {
+                    return val;
+                }
+            }
+        }
+
+        if (str[pos] == 'e' || str[pos] == 'E') {
+            pos++;
+            unsigned int exp = 0;
+
+            int sign = str[pos] == '-' ? -1 : 1;
+            if (str[pos] == '-' || str[pos] == '+') {
+                pos++;
+            }
+
+            for (; pos < str.size(); pos++) {
+                exp *= 10;
+                exp += *range::get_num(str[pos], 10);
+            }
+
+            if (sign > 0) {
+                val *= pow(10, exp);
+            }
+            else {
+                val /= pow(10, exp);
+            }
+        }
+
+        return val;
+    }
+
     Token Lexer::lex_number() {
         bool valid = true;
 
@@ -472,7 +548,7 @@ namespace scar {
         }
         else {
             // Not floating
-            return Token(LitInteger, curr_span(), curr_name());
+            return Token(LitInteger, curr_span(), str_to_int(curr_str()));
         }
 
         read_fraction();
@@ -481,7 +557,7 @@ namespace scar {
         if (!valid) {
             return Token(LitFloat, curr_span(), false);
         }
-        return Token(LitFloat, curr_span(), curr_name());
+        return Token(LitFloat, curr_span(), str_to_float(curr_str()));
     }
 
     unsigned int Lexer::read_numbers(unsigned int base) {
