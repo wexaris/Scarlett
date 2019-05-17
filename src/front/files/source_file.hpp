@@ -6,7 +6,7 @@
 namespace scar {
     namespace source {
 
-        struct SourceFile {
+        class SourceFile {
 
         private:
             std::ifstream file;
