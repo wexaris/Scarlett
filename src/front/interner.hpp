@@ -28,6 +28,9 @@ namespace scar {
         }
 
         ast::Name intern(std::string str);
+
+        interned_str_t find(ast::Name name) const;
+        interned_str_t find(ast::Ident ident) const;
         std::optional<ast::Name> find(const std::string& str) const;
     };
 
