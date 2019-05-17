@@ -74,7 +74,7 @@ namespace scar {
             bump();
         }
         if (curr() == '/') {
-            if (curr() == '/') {
+            if (next() == '/') {
                 bump(2);
                 while (curr() != '\n' && !curr().is_eof()) {
                     bump();
@@ -84,7 +84,7 @@ namespace scar {
             else if (next() == '*') {
                 Span comment_sp = Span(sf(), curr_pos(), curr_pos());
                 bump(2);
-                while (curr() != '*' && curr() != '/') {
+                while (!(curr() == '*' && next() == '/')) {
                     // Don't allow unclosed comments at end of file
                     if (curr().is_eof()) {
                         log::get_default()->critical("{}: unexpected end of file", comment_sp, curr());
