@@ -55,8 +55,8 @@ namespace scar {
 
         /* Read character as a number of some base.
         If the character isn't in the given base, 'std::nullopt' is retuned. */
-        static inline std::optional<uint32_t> get_num(uint32_t x, unsigned base) {
-            uint32_t val = 0;
+        static inline std::optional<unsigned int> get_num(uint32_t x, unsigned int base) {
+            unsigned int val = 0;
 
             if (in_range(x, '0', '9')) {
                 val = x - '0';
