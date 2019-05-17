@@ -21,7 +21,7 @@ namespace scar {
             std::vector<sink_ptr_t> sinks;
             std::atomic<size_t> error_count = 0;
 
-            virtual void sink_it(Log& msg);
+            virtual void sink_it(const Log& msg);
             virtual void flush_();
 
             void throw_if_critical(LogLevel lvl);

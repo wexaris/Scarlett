@@ -48,7 +48,7 @@ namespace scar {
             }
         }
 
-        void Logger::sink_it(Log& msg) {
+        void Logger::sink_it(const Log& msg) {
             for (auto& sink : sinks) {
                 if (msg.level >= Error) {
                     increase_err_count();
