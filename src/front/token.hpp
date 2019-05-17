@@ -33,10 +33,17 @@ namespace scar {
             val_s = other.val_s;
         }
 
-        inline std::string_view raw() const  { return span.file->read(span.lo.idx, span.hi.idx - span.lo.idx); }
+        inline bool operator==(const TokenType& ty) const {
+            return type == ty;
+        }
+        inline bool operator!=(const TokenType& ty) const {
+            return type != ty;
+        }
 
-        inline bool is_valid() const    { return valid; }
-        inline bool is_eof() const      { return type == END; }
+        inline std::string_view raw() const { return span.file->read(span.lo.idx, span.hi.idx - span.lo.idx); }
+
+        inline bool has_valid_value() const { return valid; }
+        inline bool is_eof() const          { return type == END; }
     };
 
 }
