@@ -26,12 +26,14 @@ set( SRC_FILES
     src/main.cpp
     src/cmd_args/args.cpp
     src/driver/driver.cpp
+    src/front/parser.cpp
+    src/front/interner.cpp
+    src/front/token.cpp
+    src/front/ast.cpp
     src/front/lex/lexer.cpp
     src/front/lex/utf_reader.cpp
     src/front/lex/codepoint.cpp
     src/front/files/source.cpp
-    src/front/interner.cpp
-    src/front/token.cpp
     src/log/registry.cpp
     src/log/logger.cpp
 )

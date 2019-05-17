@@ -9,15 +9,9 @@ namespace scar {
     }
 
     void Driver::run() {
-        Lexer lexer = Lexer(Session::instance().args.in[0]);
-        
-        auto tok = lexer.next_token();
-        if (!tok.is_eof()) {
-            do {
-                log::get_default()->info(tok);
-                tok = lexer.next_token();
-            } while (!tok.is_eof());
-        }
+        Parser parser = Parser(Session::instance().args.in[0]);
+
+        parser.parse();
     }
 
 }
