@@ -33,7 +33,7 @@ namespace scar {
                 //    |
                 // ln | bad code preview
                 //    |     ^^^^
-                void fmt(const Log& msg, ::fmt::memory_buffer& buff) final override {
+                void fmt(const Log& msg, ::fmt::memory_buffer& buff) const final override {
                     // Add log level
                     if (msg.level >= Warning) {
                         auto lvl_txt = loglevels.at(msg.level);

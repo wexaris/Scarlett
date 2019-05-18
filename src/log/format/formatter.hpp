@@ -14,7 +14,7 @@ namespace scar {
                 FormatterBase() = default;
                 virtual ~FormatterBase() = default;
 
-                virtual void fmt(const Log& msg, fmt::memory_buffer& buff) = 0;
+                virtual void fmt(const Log& msg, fmt::memory_buffer& buff) const = 0;
             };
 
         }
