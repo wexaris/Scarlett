@@ -4,60 +4,63 @@
 // work together as they should, including the parser, lexer,
 // error handling system etc.
 
-mod main;
+::foo::bar::val + 4e1 / 0.666e4 * 1 + 0.9898;
+ff() + d
+
+/*mod main;
 
 pub static var a_global_var: 'static &[*i32];
 
 mod sub {
-	pub struct Pos<'a> {
-		pub x: 'a i32;
-		pub y: 'a i32;
-	}
+    pub struct Pos<'a> {
+        pub x: 'a i32;
+        pub y: 'a i32;
+    }
 
-	pub struct Int(i32, );
+    pub struct Int(i32, );
 
-	pub union FloatInt<'c> {
-		f: 'c f32;
-		i: 'c i32;
-	}
+    pub union FloatInt<'c> {
+        f: 'c f32;
+        i: 'c i32;
+    }
 
-	impl Pos {
-		pub fun make(x: i32, y: i32) -> Pos {
-			return Pos { x: x, y: y };
-		}
-	}
+    impl Pos {
+        pub fun make(x: i32, y: i32) -> Pos {
+            return Pos { x: x, y: y };
+        }
+    }
 
-	pub enum Dir<'b> {
-		UP,
-		DOWN,
-		LEFT,
-		RIGHT,
-		SEQ = useless::ret_this(4),
-	}
+    pub enum Dir<'b> {
+        UP,
+        DOWN,
+        LEFT,
+        RIGHT,
+        SEQ = useless::ret_this(4),
+    }
 
-	pub trait Raw {
-		fun raw(&self) -> (i32, i32);
-	}
+    pub trait Raw {
+        fun raw(&self) -> (i32, i32);
+    }
 
-	impl Raw for Pos {
-		pub fun raw(&self) -> (i32, i32) {
-			return (x, y);
-		}
-	}
-}
+    impl Raw for Pos {
+        pub fun raw(&self) -> (i32, i32) {
+            return (x, y);
+        }
+    }
+}*/
 
 // use 'sub' with scope
 // var: sub::Pos<'static>
 
-use sub;						// scope to module 'sub' implicity from now on
+/*use sub;*/                        // scope to module 'sub' implicity from now on
 // no need for scope
 // var: Pos<'static>
 
-fun main(args: &[String]) -> isize
+/*fun main(args: &[String]) -> isize
 {
-	var pos: Pos<'static> = Pos::make(1, 1);
+    var pos: Pos<'static> = Pos::make(1, 1);
 
-	print!("Hello, World!");
+    print!("Hello, World!");
 
-	return 0;
-}
+    return 0;
+}*/
