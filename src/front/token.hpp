@@ -7,23 +7,19 @@ namespace scar {
 
     struct Token {
 
-        using int_t    = size_t;
-        using float_t  = double;
-        using str_t    = ast::Name;
-
         TokenType type;
         Span span;
 
         bool valid      = true;
-        int_t val_i     = 0;
-        float_t val_f   = 0;
-        str_t val_s     = { 0 };
+        size_t val_i    = 0;
+        double val_f    = 0;
+        ast::Name val_s = { 0 };
 
         Token() = default;
         Token(TokenType ty, Span sp, bool valid = true);
-        Token(TokenType ty, Span sp, int_t v);
-        Token(TokenType ty, Span sp, float_t v);
-        Token(TokenType ty, Span sp, str_t v);
+        Token(TokenType ty, Span sp, size_t v);
+        Token(TokenType ty, Span sp, double v);
+        Token(TokenType ty, Span sp, ast::Name v);
 
         inline void operator=(const Token& other) {
             type = other.type;

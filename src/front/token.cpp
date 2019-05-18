@@ -8,17 +8,17 @@ namespace scar {
         span(sp),
         valid(valid)
     {}
-    Token::Token(TokenType ty, Span sp, int_t v) :
+    Token::Token(TokenType ty, Span sp, size_t v) :
         Token(ty, sp)
     {
         val_i = v;
     }
-    Token::Token(TokenType ty, Span sp, float_t v) :
+    Token::Token(TokenType ty, Span sp, double v) :
         Token(ty, sp)
     {
         val_f = v;
     }
-    Token::Token(TokenType ty, Span sp, str_t v) :
+    Token::Token(TokenType ty, Span sp, ast::Name v) :
         Token(ty, sp)
     {
         val_s = v;
