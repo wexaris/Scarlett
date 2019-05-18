@@ -24,6 +24,9 @@ namespace scar {
                 virtual void log(const Log& msg) = 0;
                 virtual void flush() = 0;
                 virtual void set_formatter(formatter_ptr_t fmt) = 0;
+                virtual const formatter_ptr_t get_formatter() const {
+                    return formatter;
+                }
             };
 
             template<typename Mutex>
