@@ -14,7 +14,7 @@ namespace scar {
             class SinkBase {
 
             protected:
-                formatter_ptr_t formatter = std::make_unique<default_formatter_t>();
+                formatter_ptr_t formatter = std::make_shared<default_formatter_t>();
 
             public:
                 SinkBase() = default;
