@@ -10,7 +10,7 @@ namespace scar {
         }
 
         ExprFunCallPrint::ExprFunCallPrint(unique<Expr> args) :
-            ExprFunCall(Interner::instance().intern("print"), std::move(args))
+            ExprFunCall({ Interner::instance().intern("print") }, std::move(args))
         {}
 
     }

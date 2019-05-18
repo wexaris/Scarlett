@@ -45,6 +45,7 @@ namespace scar {
             inline Ident to_ident() const { return Ident(id); }
             SCAR_AST_ACCEPT_OVERRIDE;
         };
+        using Path = std::vector<Name>;
 
         struct Integer : public Expr {
             size_t val;
@@ -57,8 +58,8 @@ namespace scar {
             SCAR_AST_ACCEPT_OVERRIDE;
         };
         struct Var : public Expr {
-            Name name;
-            Var(Name name) : name(name) {}
+            Path path;
+            Var(Path path) : path(std::move(path)) {}
             SCAR_AST_ACCEPT_OVERRIDE;
         };
 
@@ -108,7 +109,6 @@ namespace scar {
         __VA_ARGS__\
     }
 
-        SCAR_AST_BINOP_DECL(ExprScope, );
         SCAR_AST_BINOP_DECL(ExprMemberAccess, );
         SCAR_AST_BINOP_DECL(ExprSum, );
         SCAR_AST_BINOP_DECL(ExprSub, );
@@ -127,10 +127,10 @@ namespace scar {
 
 
         struct ExprFunCall : public Expr {
-            Name name;
+            Path path;
             unique<Expr> args;
-            ExprFunCall(Name name, unique<Expr> args) :
-                name(name),
+            ExprFunCall(Path path, unique<Expr> args) :
+                path(std::move(path)),
                 args(std::move(args))
             {}
             SCAR_AST_ACCEPT_OVERRIDE;
