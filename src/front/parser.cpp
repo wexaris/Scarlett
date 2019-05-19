@@ -7,6 +7,7 @@
 
 namespace scar {
 
+    namespace err_help {
     inline err::ParseError err_spanned(const Span& sp, std::string_view msg) {
         return err::ParseError::make(log::Error, "{}: {}", sp, msg);
     }
@@ -16,6 +17,22 @@ namespace scar {
     inline err::ParseError err_unexpected_ty(const Token& tok) {
         return err_unexpected(tok.span, fmt::format("{}", ttype::to_str(tok.type)));
     }
+    }
+
+    void error_and_throw(const Token& tok, std::string_view msg) {
+        err_help::err_spanned(tok.span, msg);
+    }
+
+    void error_and_throw(const Token& tok) {
+        using namespace err_help;
+
+        if (tok == END) {
+            err_unexpected(tok.span, "end of file").emit();
+        }
+        else {
+            err_unexpected_ty(tok).emit();
+        }
+    }
 
     Parser::Parser(std::string_view path) :
         lexer(path),
@@ -23,12 +40,7 @@ namespace scar {
     {}
 
     void Parser::failed_expect() {
-        if (tok == END) {
-            err_unexpected(tok.span, "end of file").emit();
-        }
-        else {
-            err_unexpected_ty(tok).emit();
-        }
+        error_and_throw(tok);
     }
 
     // Contains all of the TokenTypes that could start a statement.
@@ -203,6 +215,7 @@ namespace scar {
         };
 
         /* Construct the expropriate operator AST node for the token's type.
+        Emits an error message and begins recovery if the token isn't a valid operator.
         We use a full token instead of a type to get more accurate error messages. */
         unique<ast::Expr> make_preop(const Token& tok, unique<ast::Expr> atom) {
 
@@ -223,13 +236,14 @@ namespace scar {
                 // if it wouldn't be modified either way
                 return atom;
             default:
-                err_unexpected_ty(tok);
+                error_and_throw(tok);
                 return nullptr;
             }
 #undef SCAR_MATCH_TYPE_OPERATOR_CASE
         }
 
         /* Construct the expropriate operator AST node for the token's type.
+        Emits an error message and begins recovery if the token isn't a valid operator.
         We use a full token instead of a type to get more accurate error messages. */
         unique<ast::Expr> make_postop(const Token& tok, unique<ast::Expr> atom) {
 
@@ -241,13 +255,14 @@ namespace scar {
                 SCAR_MATCH_TYPE_OPERATOR_CASE(PlusPlus, ast::ExprPostIncrement);
                 SCAR_MATCH_TYPE_OPERATOR_CASE(MinusMinus, ast::ExprPostDecrement);
             default:
-                err_unexpected_ty(tok);
+                error_and_throw(tok);
                 return nullptr;
             }
 #undef SCAR_MATCH_TYPE_OPERATOR_CASE
         }
 
         /* Construct the expropriate operator AST node for the token's type.
+        Emits an error message and begins recovery if the token isn't a valid operator.
         We use a full token instead of a type to get more accurate error messages. */
         unique<ast::Expr> make_binop(const Token& tok, unique<ast::Expr> lhs, unique<ast::Expr> rhs) {
 
@@ -270,7 +285,7 @@ namespace scar {
                 SCAR_MATCH_TYPE_OPERATOR_CASE(Shl, ast::ExprShl);
                 SCAR_MATCH_TYPE_OPERATOR_CASE(Shr, ast::ExprShr);
             default:
-                err_unexpected_ty(tok);
+                error_and_throw(tok);
                 return nullptr;
             }
 #undef SCAR_MATCH_TYPE_OPERATOR_CASE
