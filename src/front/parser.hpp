@@ -8,6 +8,7 @@ namespace scar {
     private:
         Lexer lexer;
         Token tok;
+        unsigned int error_count = 0;
 
         Parser(const Parser&) = delete;
 
@@ -46,6 +47,9 @@ namespace scar {
         Parser(std::string_view path);
 
         ast::Package parse();
+
+        inline bool had_error() const { return error_count > 0; }
+        inline unsigned int err_count() const { return error_count; }
     };
 
 }

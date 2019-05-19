@@ -95,6 +95,7 @@ namespace scar {
                 (void)e;
             }
             catch (const err::RecoveryUnwind&) {
+                error_count++;
                 synchronize();
                 log::get_default()->info("recovered");
             }
