@@ -7,13 +7,13 @@
 
 namespace scar {
 
-    inline err::Error err_spanned(const Span& sp, std::string_view msg) {
-        return err::make(log::Error, "{}: {}", sp, msg);
+    inline err::ParseError err_spanned(const Span& sp, std::string_view msg) {
+        return err::ParseError::make(log::Error, "{}: {}", sp, msg);
     }
-    inline err::Error err_unexpected(const Span& sp, std::string_view msg) {
-        return err::make(log::Error, "{}: unexpected {}", sp, msg);
+    inline err::ParseError err_unexpected(const Span& sp, std::string_view msg) {
+        return err::ParseError::make(log::Error, "{}: unexpected {}", sp, msg);
     }
-    inline err::Error err_unexpected_ty(const Token& tok) {
+    inline err::ParseError err_unexpected_ty(const Token& tok) {
         return err_unexpected(tok.span, fmt::format("{}", ttype::to_str(tok.type)));
     }
 
@@ -94,7 +94,7 @@ namespace scar {
                 auto e = expr();
                 (void)e;
             }
-            catch (const err::Error&) {
+            catch (const err::RecoveryUnwind&) {
                 synchronize();
                 log::get_default()->info("recovered");
             }

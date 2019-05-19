@@ -4,14 +4,13 @@
 namespace scar {
     namespace err {
 
-        Error::Error(log::LogLevel lvl, std::string msg) :
+        ParseError::ParseError(log::LogLevel lvl, std::string msg) :
             lvl(lvl),
             msg(std::move(msg))
         {}
 
-        [[noreturn]] void Error::emit() const {
+        void ParseError::emit_() const {
             log::get_default()->log(lvl, msg);
-            throw *this;
         }
 
     }
