@@ -37,6 +37,7 @@ set( SRC_FILES
     src/front/err/error.cpp
     src/log/registry.cpp
     src/log/logger.cpp
+    src/log/format/default_fmt.cpp
 )
 
 # GNUCXX compile options
