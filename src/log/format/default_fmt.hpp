@@ -14,8 +14,6 @@ namespace scar {
 
                 std::unordered_map<LogLevel, ColorPair> logcolors;
 
-                std::string end = col::ansi::reset + "\n";
-
             public:
                 DefaultFormatter();
                 ~DefaultFormatter() = default;
@@ -33,9 +31,6 @@ namespace scar {
                 inline void set_lvl_color(LogLevel lvl, col::color_t lvl_col, col::color_t msg_col) {
                     logcolors[lvl] = { lvl_col, msg_col };
                 }
-
-                inline std::string_view get_ending() const { return end; }
-                inline void set_ending(std::string e) { end = std::move(e); }
             };
 
         }

@@ -22,7 +22,7 @@ namespace scar {
                 }
                 fmt_help::append_str(buff, col::with_color(logcolors.at(msg.level).msg, msg.payload));
 
-                fmt_help::append_str(buff, end);
+                fmt_help::append_str(buff, "\n\n");
             }
 
         }
