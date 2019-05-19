@@ -28,9 +28,6 @@ namespace scar {
 
             void internal_err(std::string_view msg) const;
 
-            LogLevel update_log_level(LogLevel lvl);
-            bool should_log(LogLevel lvl) const;
-
             inline void increase_err_count() { error_count++; }
 
 
@@ -47,6 +44,9 @@ namespace scar {
             virtual ~Logger() = default;
 
             void flush();
+
+            LogLevel update_log_level(LogLevel lvl);
+            bool should_log(LogLevel lvl) const;
 
             template<typename... Args>
             inline void log(LogLevel lvl, std::string_view msg, const Args& ... args) {
