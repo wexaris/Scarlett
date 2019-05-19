@@ -8,15 +8,15 @@
 namespace scar {
 
     namespace err_help {
-    inline err::ParseError err_spanned(const Span& sp, std::string_view msg) {
-        return err::ParseError::make(log::Error, "{}: {}", sp, msg);
-    }
-    inline err::ParseError err_unexpected(const Span& sp, std::string_view msg) {
-        return err::ParseError::make(log::Error, "{}: unexpected {}", sp, msg);
-    }
-    inline err::ParseError err_unexpected_ty(const Token& tok) {
-        return err_unexpected(tok.span, fmt::format("{}", ttype::to_str(tok.type)));
-    }
+        inline err::ParseError err_spanned(const Span& sp, std::string_view msg) {
+            return err::ParseError::make(log::Error, "{}: {}", sp, msg);
+        }
+        inline err::ParseError err_unexpected(const Span& sp, std::string_view msg) {
+            return err::ParseError::make(log::Error, "{}: unexpected {}", sp, msg);
+        }
+        inline err::ParseError err_unexpected_ty(const Token& tok) {
+            return err_unexpected(tok.span, fmt::format("{}", ttype::to_str(tok.type)));
+        }
     }
 
     void error_and_throw(const Token& tok, std::string_view msg) {
@@ -341,13 +341,12 @@ namespace scar {
                 auto op_tok = tok;
                 bump();
 
-                if (info.assoc == op::OpInfo::LEFT) {
-                    atom = expr(info.prec + 1);
-                }
-                else {
-                    atom = expr(info.prec);
-                }
+                // Parse the expression that will be operated on
+                // If the operator was left associative, increase the precedence
+                atom = expr(
+                    (info.assoc == op::OpInfo::LEFT) ? info.prec + 1 : info.prec);
 
+                // Return with the operator's AST node
                 return op::make_preop(op_tok, std::move(atom));
             }
         }
@@ -402,6 +401,7 @@ namespace scar {
                 auto op_tok = tok;
                 bump();
 
+                // Return with the operator's AST node
                 return op::make_postop(op_tok, std::move(atom));
             }
         }
