@@ -143,7 +143,7 @@ namespace scar {
             case ShrAssign:     return "'=>>'";
 
             default:
-                log::get_default()->debug("token.cpp: missing TokenType string for type {}", (int)ty);
+                log::debug("token.cpp: missing TokenType string for type {}", (int)ty);
                 return "unknown";
             }
         }

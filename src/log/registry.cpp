@@ -15,7 +15,7 @@ namespace scar {
 
         void Registry::register_logger(logger_ptr_t logger) {
             if (loggers.find(logger->name) != loggers.end()) {
-                get_default()->warn("logger '{}' already registered", logger->name);
+                default_logger->warn("logger '{}' already registered", logger->name);
                 return;
             }
             loggers[logger->name] = std::move(logger);

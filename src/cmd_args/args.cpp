@@ -6,11 +6,11 @@ namespace scar {
     namespace args {
 
         inline void print_version() {
-            log::get_default()->info("scar {}", version::get_version());
+            log::info("scar {}", version::get_version());
         }
 
         inline void print_usage() {
-            log::get_default()->info(
+            log::info(
                 "USAGE: scar [options] <input>\n"
                 "\n"
                 "OPTIONS:\n"
@@ -69,7 +69,7 @@ namespace scar {
                     }
                 }
 
-                log::get_default()->critical("unrecognized option '{}'", arg);
+                log::critical("unrecognized option '{}'", arg);
                 throw EarlyExit(1);
 
             next_arg_loop:
@@ -78,7 +78,7 @@ namespace scar {
 
             // Check for missing input files
             if (ifiles.size() == 0) {
-                log::get_default()->error("missing input files");
+                log::error("missing input files");
                 throw EarlyExit(0);
             }
 
@@ -131,7 +131,7 @@ namespace scar {
                 cmd.next();
 
                 if (cmd.is_end() || cmd.get()[0] == '-') {
-                    log::get_default()->error("missing parameter after '{}'", first);
+                    log::error("missing parameter after '{}'", first);
                     throw EarlyExit(1);
                 }
 
@@ -146,7 +146,7 @@ namespace scar {
                     }
                     bool allow_diff = (*predef_iter).second.first;
                     if (!allow_diff) {
-                        log::get_default()->error("invalid parameter '{}'", arg);
+                        log::error("invalid parameter '{}'", arg);
                         throw EarlyExit(1);
                     }
                 }

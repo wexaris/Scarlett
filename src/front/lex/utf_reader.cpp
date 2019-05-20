@@ -91,7 +91,7 @@ namespace scar {
             return Codepoint(outval);
         }
         else {
-            log::get_default()->critical("invalid UTF-8; code is too long");
+            log::critical("invalid UTF-8; code is too long");
             return Codepoint(0); // hide 'reaches end of non-void function' warning
         }
     }

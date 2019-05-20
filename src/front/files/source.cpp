@@ -9,7 +9,7 @@ namespace scar {
             path(path)
         {
             if (!file.is_open()) {
-                log::get_default()->critical("failed to open file {}", path);
+                log::critical("failed to open file {}", path);
             }
 
             file.seekg(0, file.end);

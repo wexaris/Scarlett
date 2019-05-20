@@ -5,7 +5,7 @@
 namespace scar {
 
     void Session::apply_args() {
-        log::get_default()->apply_options(args);
+        log::apply_options(args);
     }
 
     void Driver::run() {
@@ -19,7 +19,7 @@ namespace scar {
             if (err_num > 1) {
                 err_count_str += "s";
             }
-            log::get_default()->error("build failed due to {}", err_count_str);
+            log::error("build failed due to {}", err_count_str);
         }
     }
 

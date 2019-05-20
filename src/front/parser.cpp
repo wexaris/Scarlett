@@ -109,7 +109,7 @@ namespace scar {
             catch (const err::RecoveryUnwind&) {
                 error_count++;
                 synchronize();
-                log::get_default()->info("recovered");
+                log::info("recovered");
             }
         }
         

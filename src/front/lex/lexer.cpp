@@ -87,7 +87,7 @@ namespace scar {
                 while (!(curr() == '*' && next() == '/')) {
                     // Don't allow unclosed comments at end of file
                     if (curr().is_eof()) {
-                        log::get_default()->critical("{}: unexpected end of file", comment_sp, curr());
+                        log::critical("{}: unexpected end of file", comment_sp, curr());
                         return;
                     }
                     comment_sp.hi = curr_pos();
@@ -300,7 +300,7 @@ namespace scar {
                 bump();
 
                 auto sp = Span(sf(), bad_start, curr_pos());
-                log::get_default()->error("{}: unexpected symbol '{}'", sp, curr());
+                log::error("{}: unexpected symbol '{}'", sp, curr());
                 
                 return scar::Token(LitChar, curr_span(), Interner::instance().intern(""));
             }
@@ -317,7 +317,7 @@ namespace scar {
                 // Check for ending '\''
                 if (curr() == '\'') {
                     bump(); // go past ending '\''
-                    log::get_default()->error("{}: character literals can only contain one codepoint", curr_span());
+                    log::error("{}: character literals can only contain one codepoint", curr_span());
                     return Token(LitChar);
                 }
 
@@ -327,7 +327,7 @@ namespace scar {
             // Newlines and tabs aren't allowed inside characters
             if ((curr() == '\n' || curr() == '\r' || curr() == '\t') && curr() == '\'') {
                 bump();
-                log::get_default()->critical("{}: special characters need to be written with escape symbols", curr_span());
+                log::critical("{}: special characters need to be written with escape symbols", curr_span());
             }
 
             Codepoint ch = curr();
@@ -351,7 +351,7 @@ namespace scar {
                     bump();
 
                     auto sp = Span(sf(), bad_start, curr_pos());
-                    log::get_default()->critical("{}: unexpected symbol '{}'", sp, curr());
+                    log::critical("{}: unexpected symbol '{}'", sp, curr());
                 }
                 bump();
             }
@@ -370,7 +370,7 @@ namespace scar {
                     }
                     bump();
                 }
-                log::get_default()->error("{}: character literals can only contain one codepoint", curr_span());
+                log::error("{}: character literals can only contain one codepoint", curr_span());
                 return scar::Token(LitChar, curr_span(), false);
             }
 
@@ -386,7 +386,7 @@ namespace scar {
             while (curr() != '\"') {
                 // The string literal reaches EOF
                 if (curr().is_eof()) {
-                    log::get_default()->critical("{}: string literal missing end quote", curr_span());
+                    log::critical("{}: string literal missing end quote", curr_span());
                     return Token(END);
                 }
 
@@ -411,7 +411,7 @@ namespace scar {
                         bump();
 
                         auto sp = Span(sf(), bad_start, curr_pos());
-                        log::get_default()->critical("{}: unexpected symbol '{}'", sp, curr());
+                        log::critical("{}: unexpected symbol '{}'", sp, curr());
                     }
                     bump();
                 }
@@ -425,7 +425,7 @@ namespace scar {
 
         default:
             bump();
-            log::get_default()->critical("{}: unexpected symbol '{}'", curr_span(), curr());
+            log::critical("{}: unexpected symbol '{}'", curr_span(), curr());
         }
 
         return Token(END);
@@ -520,7 +520,7 @@ namespace scar {
                 if (!curr().is_bin()) {
                     bump();
                     valid = false;
-                    log::get_default()->critical("{}: binary number missing value", curr_span());
+                    log::critical("{}: binary number missing value", curr_span());
                 }
             }
             else if (next() == 'o') {
@@ -530,7 +530,7 @@ namespace scar {
                 if (!curr().is_oct()) {
                     bump();
                     valid = false;
-                    log::get_default()->critical("{}: octal number missing value", curr_span());
+                    log::critical("{}: octal number missing value", curr_span());
                 }
             }
             else if (next() == 'x') {
@@ -540,7 +540,7 @@ namespace scar {
                 if (!curr().is_hex()) {
                     bump();
                     valid = false;
-                    log::get_default()->critical("{}: hexadecimal number missing value", curr_span());
+                    log::critical("{}: hexadecimal number missing value", curr_span());
                 }
             }
         }
@@ -553,7 +553,7 @@ namespace scar {
             if (base != 10) {
                 read_fraction();
                 read_exponent();
-                log::get_default()->critical("{}: only decimal numbers support fractions and exponents", curr_span());
+                log::critical("{}: only decimal numbers support fractions and exponents", curr_span());
                 return Token(LitFloat, curr_span(), false);
             }
         }
@@ -612,7 +612,7 @@ namespace scar {
                 return false;
             }
             else {
-                log::get_default()->critical("{}: exponent requires a value", curr_span());
+                log::critical("{}: exponent requires a value", curr_span());
                 return false;
             }
         }
@@ -624,11 +624,11 @@ namespace scar {
 
         for (; num > 0; num--) {
             if (curr().is_eof()) {
-                log::get_default()->critical("{}: incomplete numeric escape", curr_span());
+                log::critical("{}: incomplete numeric escape", curr_span());
                 return Codepoint(0);
             }
             if (curr() == delim) {
-                log::get_default()->error("{}: numeric escape is too short", curr_span());
+                log::error("{}: numeric escape is too short", curr_span());
                 number = 0xFFFD;
                 break;
             }
@@ -639,7 +639,7 @@ namespace scar {
                 number += *n;
             }
             else {
-                log::get_default()->error("{}: invalid numeric escape: '{}'", curr_span(), curr_str());
+                log::error("{}: invalid numeric escape: '{}'", curr_span(), curr_str());
                 number = 0xFFFD;
                 break;
             }
@@ -647,7 +647,7 @@ namespace scar {
         }
 
         if (!range::is_char(number)) {
-            log::get_default()->error("{}: invalid numeric escape: '{}'", curr_span(), curr_str());
+            log::error("{}: invalid numeric escape: '{}'", curr_span(), curr_str());
             number = 0xFFFD;
         }
 

@@ -27,7 +27,7 @@ namespace scar {
             s += (char)(0x80 | ((val >> 0) & 0x3F));
         }
         else {
-            log::get_default()->critical("invalid Unicode codepoint '{:x}'", val);
+            log::critical("invalid Unicode codepoint '{:x}'", val);
         }
         return s;
     }

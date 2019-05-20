@@ -10,7 +10,7 @@ namespace scar {
         {}
 
         void ParseError::emit_() const {
-            log::get_default()->log(lvl, msg);
+            log::log(lvl, msg);
         }
 
     }
