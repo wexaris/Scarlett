@@ -1,8 +1,8 @@
 #pragma once
 #include "sinks/sink.hpp"
 #include <functional>
-#include <atomic>
 #include <memory>
+#include <mutex>
 
 namespace scar {
     namespace args { struct ParsedArgs; }
@@ -11,6 +11,7 @@ namespace scar {
 
 #define SCAR_LOGGER_CATCH_EXCEPTION catch (const std::exception& e) { internal_err(e.what()); }
 
+        using fmt_ptr_t = std::shared_ptr<format::FormatterBase>;
         using sink_ptr_t = std::shared_ptr<sinks::SinkBase>;
         using sink_list_t = std::initializer_list<sink_ptr_t>;
         using err_handler_t = std::function<void(std::string_view msg)>;
@@ -19,17 +20,15 @@ namespace scar {
 
         private:
             std::vector<sink_ptr_t> sinks;
-            std::atomic<size_t> error_count = 0;
+            fmt_ptr_t formatter = std::make_shared<format::DefaultFormatter>();
+            std::mutex mutex;
 
-            virtual void sink_it(const Log& msg);
+            virtual void sink_it(std::string_view msg);
             virtual void flush_();
 
             void throw_if_critical(LogLevel lvl);
 
             void internal_err(std::string_view msg) const;
-
-            inline void increase_err_count() { error_count++; }
-
 
         public:
             const std::string_view name;
@@ -49,7 +48,7 @@ namespace scar {
             bool should_log(LogLevel lvl) const;
 
             template<typename... Args>
-            inline void log(LogLevel lvl, std::string_view msg, const Args& ... args) {
+            inline void log(LogLevel lvl, const Args& ... args) {
                 lvl = update_log_level(lvl);
                 if (!should_log(lvl)) {
                     return;
@@ -57,45 +56,14 @@ namespace scar {
 
                 try {
                     fmt::memory_buffer buff;
-                    fmt::format_to(buff, msg, args...);
+                    fmt::format_to(buff, args...);
                     Log log = Log(lvl, fmt_help::to_string_view(buff));
-                    sink_it(log);
-                }
-                SCAR_LOGGER_CATCH_EXCEPTION;
 
-                throw_if_critical(lvl);
-            }
+                    std::lock_guard lock(mutex);
+                    fmt::memory_buffer fmt_buff;
+                    formatter->fmt(log, fmt_buff);
 
-            // Log message with type T which can be converted to string_view
-            template<class T, typename std::enable_if<
-                std::is_convertible<T, std::string_view>::value, T>::type* = nullptr>
-                void log(LogLevel lvl, const T & msg) {
-                lvl = update_log_level(lvl);
-                if (!should_log(lvl)) {
-                    return;
-                }
-                try {
-                    Log log = Log(lvl, msg);
-                    sink_it(log);
-                }
-                SCAR_LOGGER_CATCH_EXCEPTION;
-
-                throw_if_critical(lvl);
-            }
-
-            // Log message with type T which can't be converted to string_view
-            template<class T, typename std::enable_if<
-                !std::is_convertible<T, std::string_view>::value, T>::type* = nullptr>
-                void log(LogLevel lvl, const T & msg) {
-                lvl = update_log_level(lvl);
-                if (!should_log(lvl)) {
-                    return;
-                }
-                try {
-                    fmt::memory_buffer buff;
-                    fmt::format_to(buff, "{}", msg);
-                    Log log = Log(lvl, fmt_help::to_string_view(buff));
-                    sink_it(log);
+                    sink_it(fmt_help::to_string_view(fmt_buff));
                 }
                 SCAR_LOGGER_CATCH_EXCEPTION;
 
@@ -132,10 +100,8 @@ namespace scar {
             template<typename T>
             inline void critical(const T& msg) { log(Critical, msg); }
 
-            inline void set_formatter(formatter_ptr_t fmt);
-
-            inline std::vector<sink_ptr_t>& get_sinks()             { return sinks; }
-            inline size_t get_err_count() const                     { return error_count; }
+            void set_formatter(const fmt_ptr_t& fmt);
+            inline std::vector<sink_ptr_t>& get_sinks() { return sinks; }
 
             /* Updates the logger's options according to the given parsed arguments. */
             void apply_options(const args::ParsedArgs& args);

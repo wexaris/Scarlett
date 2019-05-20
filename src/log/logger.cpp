@@ -48,11 +48,8 @@ namespace scar {
             }
         }
 
-        void Logger::sink_it(const Log& msg) {
+        void Logger::sink_it(std::string_view msg) {
             for (auto& sink : sinks) {
-                if (msg.level >= Error) {
-                    increase_err_count();
-                }
                 sink->log(msg);
             }
             flush();
@@ -71,10 +68,9 @@ namespace scar {
             }
         }
 
-        void Logger::set_formatter(formatter_ptr_t fmt) {
-            for (auto& sink : sinks) {
-                sink->set_formatter(fmt);
-            }
+        void Logger::set_formatter(const fmt_ptr_t& fmt) {
+            std::lock_guard lock(mutex);
+            formatter = fmt;
         }
 
     }
