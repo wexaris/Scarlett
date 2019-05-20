@@ -1,6 +1,5 @@
 #pragma once
 #include "formatter.hpp"
-#include "log/util/format_help.hpp"
 #include <unordered_map>
 
 namespace scar {

@@ -1,7 +1,6 @@
 #pragma once
 #include "log/log.hpp"
 #include "fmt/format.h"
-#include "fmt/core.h"
 #include <string>
 
 namespace scar {
