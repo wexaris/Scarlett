@@ -23,16 +23,18 @@ namespace scar {
         }
 
         template<typename... Types>
-        inline bool expect(Types... types) {
+        inline Token expect(Types... types) {
             if (match(types...)) {
+                auto t = std::move(tok);
                 bump();
-                return true;
+                return t;
             }
+            else {
             failed_expect();
-            return false;
+            }
         }
 
-        void failed_expect();
+        [[noreturn]] void failed_expect();
         void synchronize();
  
         void bump();

@@ -23,7 +23,7 @@ namespace scar {
         err_help::err_spanned(tok.span, msg);
     }
 
-    void error_and_throw(const Token& tok) {
+    [[noreturn]] void error_and_throw(const Token& tok) {
         using namespace err_help;
 
         if (tok == END) {
@@ -39,7 +39,7 @@ namespace scar {
         tok(lexer.next_token())
     {}
 
-    void Parser::failed_expect() {
+    [[noreturn]] void Parser::failed_expect() {
         error_and_throw(tok);
     }
 
@@ -119,7 +119,7 @@ namespace scar {
     // path : ('::')? ident ('::' ident)*
     ast::Path Parser::path() {
         ast::Path p = {};
-        ast::Name id;
+        Token t;
 
         // Check for global scope
         if (match(Scope)) {
@@ -129,19 +129,16 @@ namespace scar {
         // Parse first identifier
         // Parsing and errors will be easier if we loop on scopes,
         // not identifiers.
-        id = tok.val_s;
-        if (expect(Ident)) {
-            p.push_back(id);
-        }
+        t = expect(Ident);
+        p.push_back(t.val_s);
 
         // Every next scope is expected to be followed by an identifier.
         // If it's not, we break the loop and error.
         while (match(Scope)) {
             bump();
 
-            id = tok.val_s;
-            if (expect(Ident)) {
-                p.push_back(id);
+            t = expect(Ident);
+            p.push_back(t.val_s);
             }
             else {
                 break;
