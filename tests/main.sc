@@ -5,7 +5,7 @@
 // error handling system etc.
 
 ::foo::bar::val + 4e1 / 0.666e4 * 1 + 0.9898;
-ff() + d
+print(ff(42,) + d);
 
 /*mod main;
 

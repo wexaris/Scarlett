@@ -103,7 +103,7 @@ namespace scar {
 
         while (!tok.is_eof()) {
             try {
-                auto e = expr();
+                auto e = stmt();
                 (void)e;
             }
             catch (const err::RecoveryUnwind&) {
@@ -139,17 +139,63 @@ namespace scar {
 
             t = expect(Ident);
             p.push_back(t.val_s);
-            }
-            else {
-                break;
-            }
         }
 
         return p;
     }
 
+    // arg_list : '(' expr (',' expr)* (',')? ')'
+    ast::FunArgList Parser::arg_list() {
+        ast::FunArgList args = {};
+
+        expect(Lparen);
+
+        // Keep reading expressions, as long as there are commas
+        // Allow a trailing comma with no following expression
+        if (tok != Rparen) {
+            args.push_back(expr());
+            while (tok == Comma) {
+                bump();
+                if (tok == Rparen) {
+                    break;
+                }
+                args.push_back(expr());
+            }
+        }
+
+        expect(Rparen);
+
+        return args;
+    }
+
+    // stmt : expr_stmt
+    //      | print_stmt
     unique<ast::Stmt> Parser::stmt() {
-        return nullptr;
+        if (*tok.val_s.get_str() == "print") {
+            return print_stmt();
+        }
+        return expr_stmt();
+    }
+
+    // expr_stmt : expr ';'
+    unique<ast::ExprStmt> Parser::expr_stmt() {
+        auto e = expr();
+        expect(Semi);
+        return std::make_unique<ast::ExprStmt>(std::move(e));
+    }
+
+    // print_stmt : 'print' arg_list ';'
+    unique<ast::FunCallPrint> Parser::print_stmt() {
+        if (*tok.val_s.get_str() != "print") {
+            expect(Ident);
+            return nullptr;
+        }
+        bump();
+
+        auto args = arg_list();
+        expect(Semi);
+
+        return std::make_unique<ast::FunCallPrint>(std::move(args));;
     }
 
     /* Contains some of the helper structures and functions used for
@@ -321,11 +367,11 @@ namespace scar {
     /* Constructs the appropriate function call expression.
     Differentiates normal functions from temporary pre-defined ones.
     TODO: should be removed in the future. */
-    unique<ast::ExprFunCall> make_fun_call(ast::Path&& path, unique<ast::Expr> args) {
+    unique<ast::FunCall> make_fun_call(ast::Path&& path, ast::FunArgList args) {
         if (path.size() == 1 && *path[0].get_str() == "print") {
-            return std::make_unique<ast::ExprFunCallPrint>(std::move(args));
+            return std::make_unique<ast::FunCallPrint>(std::move(args));
         }
-        return std::make_unique<ast::ExprFunCall>(path, std::move(args));
+        return std::make_unique<ast::FunCall>(path, std::move(args));
     }
 
     unique<ast::Expr> Parser::expr_atom(unsigned int prec) {
@@ -373,12 +419,7 @@ namespace scar {
 
                 // A '(' after an identifier is assumed to be a function call
                 if (match(Lparen)) {
-                    bump();
-                    unique<ast::Expr> args;
-                    if (!match(Rparen)) {
-                        args = expr();
-                    }
-                    expect(Rparen);
+                    auto args = arg_list();
                     atom = make_fun_call(std::move(id_path), std::move(args));
                 }
                 else {

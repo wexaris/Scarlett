@@ -9,8 +9,8 @@ namespace scar {
             return Interner::instance().find(*this);
         }
 
-        ExprFunCallPrint::ExprFunCallPrint(unique<Expr> args) :
-            ExprFunCall({ Interner::instance().intern("print") }, std::move(args))
+        FunCallPrint::FunCallPrint(ast::FunArgList args) :
+            FunCall({ Interner::instance().intern("print") }, std::move(args))
         {}
 
     }

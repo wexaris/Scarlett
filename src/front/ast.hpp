@@ -15,8 +15,8 @@ namespace scar {
         private:
             virtual void accept(struct ASTVisitor* v) = 0;
         };
-        struct Stmt : public Node {};
-        struct Expr : public Node {};
+        struct Stmt : virtual public Node {};
+        struct Expr : virtual public Node {};
 
         struct ASTVisitor {
             virtual ~ASTVisitor() = default;
@@ -125,18 +125,27 @@ namespace scar {
 
 #undef SCAR_AST_BINOP_DECL
 
+        struct ExprStmt : public Expr, public Stmt {
+            unique<Expr> expr;
+            ExprStmt(unique<Expr> e) :
+                expr(std::move(e))
+            {}
+            SCAR_AST_ACCEPT_OVERRIDE;
+        };
 
-        struct ExprFunCall : public Expr {
+        using FunArgList = std::vector<unique<ast::Expr>>;
+
+        struct FunCall : public Expr, public Stmt {
             Path path;
-            unique<Expr> args;
-            ExprFunCall(Path path, unique<Expr> args) :
+            FunArgList args;
+            FunCall(Path path, FunArgList args) :
                 path(std::move(path)),
                 args(std::move(args))
             {}
             SCAR_AST_ACCEPT_OVERRIDE;
         };
-        struct ExprFunCallPrint : public ExprFunCall {
-            ExprFunCallPrint(unique<Expr> args);
+        struct FunCallPrint : public FunCall {
+            FunCallPrint(FunArgList args);
             SCAR_AST_ACCEPT_OVERRIDE;
         };
 

@@ -30,7 +30,7 @@ namespace scar {
                 return t;
             }
             else {
-            failed_expect();
+                failed_expect();
             }
         }
 
@@ -40,8 +40,12 @@ namespace scar {
         void bump();
 
         ast::Path path();
+        ast::FunArgList arg_list();
 
         unique<ast::Stmt> stmt();
+        unique<ast::ExprStmt> expr_stmt();
+        unique<ast::FunCallPrint> print_stmt();
+
         unique<ast::Expr> expr(unsigned int prec = 1);
         unique<ast::Expr> expr_atom(unsigned int prec);
 
