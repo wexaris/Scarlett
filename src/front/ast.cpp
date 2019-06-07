@@ -5,7 +5,7 @@
 namespace scar {
     namespace ast {
 
-        interned_str_t Ident::get_str() const {
+        interned_str_t Name::get_str() const {
             return Interner::instance().find(*this);
         }
 

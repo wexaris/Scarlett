@@ -31,18 +31,10 @@ namespace scar {
         v->visit(*this); \
     }
 
-        struct Ident : public Node {
-            const size_t id;
-            Ident(size_t id = 0) : id(id) {}
-            interned_str_t get_str() const;
-            SCAR_AST_ACCEPT_OVERRIDE;
-        };
-
         struct Name : public Node {
             size_t id;
             Name(size_t id = 0) : id(id) {}
-            interned_str_t get_str() const { return to_ident().get_str(); }
-            inline Ident to_ident() const { return Ident(id); }
+            interned_str_t get_str() const;
             SCAR_AST_ACCEPT_OVERRIDE;
         };
         using Path = std::vector<Name>;
