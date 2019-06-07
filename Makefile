@@ -3,23 +3,20 @@
 
 ROOT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
-BUILD_TYPE ?= Release
+BUILD_TYPE ?= Debug
 BUILD_DIR := $(shell echo $(BUILD_TYPE) | tr A-Z a-z)
 
+THREAD_NUM ?= 4
 
-# Execute everything in one command shell
-.ONESHELL:
-
-.PHONY: all build rebuild debug release relwithdebinfo minsizerel clean_build clean
-
+.PHONY: all build debug release relwithdebinfo minsizerel clean
 
 all: release
 
-rebuild: clean_build build
+.ONESHELL:
 build:
 	mkdir -p build/$(BUILD_DIR) && cd build/$(BUILD_DIR)
 	cmake -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) $(ROOT_DIR)
-	echo && make
+	cmake --build . --target scar --config $(BUILD_TYPE) -- -j$(THREAD_NUM)
 
 debug:
 	$(MAKE) build BUILD_TYPE=Debug
@@ -32,9 +29,6 @@ relwithdebinfo:
 
 minsizerel:
 	$(MAKE) build BUILD_TYPE=MinSizeRel
-
-clean_build:
-	rm -rf build/$(BUILD_DIR) bin/$(BUILD_DIR)
 
 clean:
 	rm -rf build/debug bin/debug

@@ -22,10 +22,12 @@ produce machine code.
 ## Building from Source
 
 1. To build the compiler you will need the following dependencies:
-    * `g++`
-    * `cmake`
-    * `make`
     * `git`
+    * `make`
+    * `cmake`
+    * `g++`
+    * `fmt`
+    * `llvm`
 
 2. Start off by cloning the source code from this repository:
     ```
@@ -36,10 +38,10 @@ produce machine code.
 3. After that you can just build the compiler by running one of
     ```
     make
-    make release
     make debug
+    make release
     ```
-    > The default build type is set to Release.
+    > The default build type is set to Debug.
 
     The actual build system is CMake, but the Makefile is used as a shorthand for
     specifying build types, making directories, and cleaning up.

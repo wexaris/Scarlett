@@ -1,10 +1,9 @@
 # IDE
 .vs/
 .vscode/
+CMakeSettings.json
 
 # Project
-bin/
-lib/
 build/
 
 # To be refactored

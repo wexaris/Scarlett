@@ -1,27 +1,80 @@
 cmake_minimum_required( VERSION 3.6 )
-project( scarlet )
+project( scarlet LANGUAGES CXX VERSION 0.0.1 )
 
-# lower case build type
-# used for directory paths
-string( TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE )
+####################
+####################
+
+# set default build type if none was specified
+set( DEFAULT_BUILD_TYPE Release )
+if( NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES )
+    message( STATUS "Set build type to '${DEFAULT_BUILD_TYPE}' as none was specified." )
+  
+    set( CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
+        STRING "Choose build type" FORCE )
+
+    # list possible build types for cmake-gui
+    set_property( CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        "Debug" "Release" "MinSizeRel" "RelWithDebInfo" )
+endif()
+
+if( CMAKE_BUILD_TYPE )
+    message( STATUS "Build: ${CMAKE_BUILD_TYPE}" )
+endif()
 
 # set output directories
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${BUILD_TYPE} )
-set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/${BUILD_TYPE} )
-set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/${BUILD_TYPE} )
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
+set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 
-#
-# set the compiler version
-# should be C++17 for [[attributes]] to work
+
+####################
+####################
+
+# set verion to C++17
 set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD_REQUIRED ON )
+set( CMAKE_CXX_EXTENSIONS OFF )
+message( STATUS "CXX verison: ${CMAKE_CXX_STANDARD}" )
 
-# set inlude path
+# GNUCXX compile options
+if( CMAKE_COMPILER_IS_GNUCXX )
+    message( STATUS "Found GNUCXX compiler" )
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -g3 -O0 -pedantic -Wall -Wextra -Werror")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+elseif ( MSVC )
+    message( STATUS "Found MSVC compiler" )
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+endif()
+
+####################
+####################
+
+find_package( fmt REQUIRED CONFIG )
+
+message( STATUS "FMT version: ${fmt_VERSION}" )
+message( STATUS "FMT config location: ${fmt_DIR}" )
+
+####################
+####################
+
+find_package( LLVM REQUIRED CONFIG )
+
+message( STATUS "LLVM version: ${LLVM_PACKAGE_VERSION}" )
+message( STATUS "LLVM config location: ${LLVM_DIR}" )
+
+include_directories( ${LLVM_INCLUDE_DIRS} )
+add_definitions( ${LLVM_DEFINITIONS} )
+
+llvm_map_components_to_libnames( llvm_libs support core irreader )
+
+####################
+####################
+
 include_directories(
     "src/"
-    "fmt/include/"
 )
 
-# all of the source files to compile
 set( SRC_FILES
     src/main.cpp
     src/cmd_args/args.cpp
@@ -40,21 +93,6 @@ set( SRC_FILES
     src/log/format/default_fmt.cpp
 )
 
-# GNUCXX compile options
-if( CMAKE_COMPILER_IS_GNUCXX )
-    # set universal parameters
-    add_compile_options( -pedantic -Wall -Wextra -Werror )
-
-    # add debug / release
-    if( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
-        add_compile_options( -DDEBUG -g3 -O0 )
-    else()
-        add_compile_options( -O3 )
-    endif()
-endif()
-
-add_subdirectory( fmt )
-
 add_executable( scar ${SRC_FILES} )
 
-target_link_libraries( scar fmt )
+target_link_libraries( scar fmt::fmt ${llvm_libs} )
