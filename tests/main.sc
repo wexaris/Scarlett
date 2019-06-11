@@ -5,7 +5,12 @@
 // error handling system etc.
 
 ::foo::bar::val + 4e1 / 0.666e4 * 1 + 0.9898;
-print(ff(42,) + d);
+
+fun main(b: bool, s: str) -> i32 {
+    var i: i32 = x - 6 * -2 / 2 + 1;
+}
+
+print(!ff(42,) + d);
 
 /*mod main;
 

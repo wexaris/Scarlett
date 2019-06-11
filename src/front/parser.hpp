@@ -40,14 +40,22 @@ namespace scar {
         void bump();
 
         ast::Path path();
-        ast::FunArgList arg_list();
+        ast::Param param();
+        std::vector<ast::Param> params();
+        ast::ArgList arg_list();
+        ast::Block block();
 
         unique<ast::Stmt> stmt();
+        unique<ast::VarDecl> var_decl();
+        unique<ast::Stmt> fun_decl();
+        unique<ast::FunPrototypeDecl> fun_prototype_decl();
         unique<ast::ExprStmt> expr_stmt();
         unique<ast::FunCallPrint> print_stmt();
 
         unique<ast::Expr> expr(unsigned int prec = 1);
         unique<ast::Expr> expr_atom(unsigned int prec);
+
+        ast::Type type();
 
     public:
         Parser(std::string_view path);

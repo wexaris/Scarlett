@@ -8,20 +8,21 @@
 namespace scar {
 
     namespace err_help {
-        inline err::ParseError err_spanned(const Span& sp, std::string_view msg) {
-            return err::ParseError::make(log::Error, "{}: {}", sp, msg);
+        inline err::ParseError log_spanned(log::LogLevel lvl, const Span& sp, std::string_view msg) {
+            return err::ParseError::make(lvl, "{}: {}", sp, msg);
         }
         inline err::ParseError err_unexpected(const Span& sp, std::string_view msg) {
-            return err::ParseError::make(log::Error, "{}: unexpected {}", sp, msg);
+            return log_spanned(log::Error, sp, fmt::format("unexpected {}", msg));
         }
         inline err::ParseError err_unexpected_ty(const Token& tok) {
-            return err_unexpected(tok.span, fmt::format("{}", ttype::to_str(tok.type)));
+            return err_unexpected(tok.span, ttype::to_str(tok.type));
         }
     }
 
-    void error_and_throw(const Token& tok, std::string_view msg) {
-        err_help::err_spanned(tok.span, msg);
-    }
+    Parser::Parser(std::string_view path) :
+        lexer(path),
+        tok(lexer.next_token())
+    {}
 
     [[noreturn]] void error_and_throw(const Token& tok) {
         using namespace err_help;
@@ -33,11 +34,6 @@ namespace scar {
             err_unexpected_ty(tok).emit();
         }
     }
-
-    Parser::Parser(std::string_view path) :
-        lexer(path),
-        tok(lexer.next_token())
-    {}
 
     [[noreturn]] void Parser::failed_expect() {
         error_and_throw(tok);
@@ -144,9 +140,41 @@ namespace scar {
         return p;
     }
 
+    // param : ident ':' type
+    ast::Param Parser::param() {
+        auto name = expect(Ident).val_s;
+        expect(Col);
+        auto ty = type();
+        return ast::Param{ name, ty };
+    }
+
+    // params : '(' param (',' param)* (',')? ')'
+    std::vector<ast::Param> Parser::params() {
+        std::vector<ast::Param> params;
+
+        expect(Lparen);
+
+        // Keep reading expressions, as long as there are commas
+        // Allow a trailing comma with no following expression
+        if (tok != Rparen) {
+            params.push_back(param());
+            while (tok == Comma) {
+                bump();
+                if (tok == Rparen) {
+                    break;
+                }
+                params.push_back(param());
+            }
+        }
+
+        expect(Rparen);
+
+        return params;
+    }
+
     // arg_list : '(' expr (',' expr)* (',')? ')'
-    ast::FunArgList Parser::arg_list() {
-        ast::FunArgList args = {};
+    ast::ArgList Parser::arg_list() {
+        ast::ArgList args = {};
 
         expect(Lparen);
 
@@ -168,13 +196,88 @@ namespace scar {
         return args;
     }
 
+    // block : '{' stmt* '}'
+    ast::Block Parser::block() {
+        ast::Block block = {};
+
+        expect(Lbrace);
+
+        while (!match(Rbrace)) {
+            block.push_back(stmt());
+        }
+
+        expect(Rbrace);
+
+        return block;
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
     // stmt : expr_stmt
     //      | print_stmt
     unique<ast::Stmt> Parser::stmt() {
-        if (*tok.val_s.get_str() == "print") {
-            return print_stmt();
+        switch (tok.type)
+        {
+        case Var:
+            return var_decl();
+        case Fun:
+            return fun_decl();
+        default:
+            if (*tok.val_s.get_str() == "print") {
+                return print_stmt();
+            }
+            return expr_stmt();
         }
-        return expr_stmt();
+    }
+
+    // var_decl : VAR ident ':' type ('=' expr)? ';'
+    unique<ast::VarDecl> Parser::var_decl() {
+        expect(Var);
+        auto name = expect(Ident).val_s;
+
+        expect(Col);
+        auto ty = type();
+
+        unique<ast::Expr> val;
+        if (match(Assign)) {
+            bump();
+            val = expr();
+        }
+        expect(Semi);
+
+        return std::make_unique<ast::VarDecl>(name, ty, std::move(val));
+    }
+
+    // fun_decl : fun_prototype_decl
+    //          | fun_prototype_decl block
+    unique<ast::Stmt> Parser::fun_decl() {
+        auto prototype = fun_prototype_decl();
+
+        if (!match(Lbrace)) {
+            return prototype;
+        }
+        auto blk = block();
+
+        return static_cast<unique<ast::Stmt>>(
+            std::make_unique<ast::FunDecl>(std::move(prototype), std::move(blk)));
+    }
+
+    // fun_prototype_decl : FUN ident fun_params (RARROW type)?
+    unique<ast::FunPrototypeDecl> Parser::fun_prototype_decl() {
+        expect(Fun);
+        auto name = expect(Ident).val_s;
+
+        auto parameters = params();
+        
+        ast::Type ret;
+        if (match(Rarrow)) {
+            bump();
+            ret = type();
+        }
+
+        return std::make_unique<ast::FunPrototypeDecl>(name, std::move(parameters), ret);
     }
 
     // expr_stmt : expr ';'
@@ -195,8 +298,13 @@ namespace scar {
         auto args = arg_list();
         expect(Semi);
 
-        return std::make_unique<ast::FunCallPrint>(std::move(args));;
+        return std::make_unique<ast::FunCallPrint>(std::move(args));
     }
+
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
 
     /* Contains some of the helper structures and functions used for
     correct operator handling while parsing expressions. */
@@ -367,7 +475,7 @@ namespace scar {
     /* Constructs the appropriate function call expression.
     Differentiates normal functions from temporary pre-defined ones.
     TODO: should be removed in the future. */
-    unique<ast::FunCall> make_fun_call(ast::Path&& path, ast::FunArgList args) {
+    unique<ast::FunCall> make_fun_call(ast::Path&& path, ast::ArgList args) {
         if (path.size() == 1 && *path[0].get_str() == "print") {
             return std::make_unique<ast::FunCallPrint>(std::move(args));
         }
@@ -423,7 +531,7 @@ namespace scar {
                     atom = make_fun_call(std::move(id_path), std::move(args));
                 }
                 else {
-                    atom = std::make_unique<ast::Var>(id_path);
+                    atom = std::make_unique<ast::Ident>(id_path);
                 }
             }
             else {
@@ -445,6 +553,28 @@ namespace scar {
         }
 
         return atom;
+    }
+
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
+    // ty : ident
+    //    | STR | CHAR | BOOL
+    //    | ISIZE | I8 | I16 | I32 | I64
+    //    | USIZE | U8 | U16 | U32 | U64
+    //    | F32 | F64
+    ast::Type Parser::type() {
+        if (match(Ident)) {
+            return ast::Type(expect(Ident).val_s);
+        }
+        auto t_tok = expect(Ident, // Add 'Ident' in case of error message
+            Str, Char, Bool,
+            Isize, I8, I16, I32, I64,
+            Usize, U8, U16, U32, U64,
+            F32, F64);
+        return ast::Type(t_tok.type);
     }
 
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "token_type.hpp"
 #include <vector>
 #include <string>
 #include <memory>
@@ -49,9 +50,9 @@ namespace scar {
             Float(double val) : val(val) {}
             SCAR_AST_ACCEPT_OVERRIDE;
         };
-        struct Var : public Expr {
+        struct Ident : public Expr {
             Path path;
-            Var(Path path) : path(std::move(path)) {}
+            Ident(Path path) : path(std::move(path)) {}
             SCAR_AST_ACCEPT_OVERRIDE;
         };
 
@@ -117,6 +118,79 @@ namespace scar {
 
 #undef SCAR_AST_BINOP_DECL
 
+        struct Type {
+            enum TyTy {
+                Custom,
+
+                // Primitive
+                Str = (int)TokenType::Str,
+                Char = (int)TokenType::Char,
+                Bool = (int)TokenType::Bool,
+
+                Isize = (int)TokenType::Isize,
+                I8 = (int)TokenType::I8,
+                I16 = (int)TokenType::I16,
+                I32 = (int)TokenType::I32,
+                I64 = (int)TokenType::I64,
+
+                Usize = (int)TokenType::Usize,
+                U8 = (int)TokenType::U8,
+                U16 = (int)TokenType::U16,
+                U32 = (int)TokenType::U32,
+                U64 = (int)TokenType::U64,
+
+                F32 = (int)TokenType::F32,
+                F64 = (int)TokenType::F64
+            } type = Custom;
+            Name custom;
+            Type() = default;
+            Type(TyTy t) : type(t) {}
+            Type(TokenType t) : type(static_cast<TyTy>(t)) {}
+            explicit Type(Name custom) : custom(custom) {}
+            inline bool is_primitive() const { return type != Custom; }
+        };
+
+        struct VarDecl : public Stmt {
+            Name name;
+            Type type;
+            unique<Expr> val;
+            VarDecl(Name name, Type ty, unique<Expr> val) :
+                name(name),
+                type(ty),
+                val(std::move(val))
+            {}
+            SCAR_AST_ACCEPT_OVERRIDE;
+        };
+
+        struct Param {
+            Name name;
+            Type type;
+        };
+
+        struct FunPrototypeDecl : public Stmt {
+            Name name;
+            std::vector<Param> params;
+            Type ret;
+            FunPrototypeDecl(Name name, std::vector<Param> params, Type ret) :
+                name(name),
+                params(params),
+                ret(ret)
+            {}
+            SCAR_AST_ACCEPT_OVERRIDE
+        };
+
+        using Block = std::vector<std::unique_ptr<Stmt>>;
+
+        struct FunDecl : public Stmt {
+            unique<FunPrototypeDecl> prototype;
+            Block block;
+            FunDecl(unique<FunPrototypeDecl> proto, Block blk) :
+                prototype(std::move(proto)),
+                block(std::move(blk))
+            {}
+            SCAR_AST_ACCEPT_OVERRIDE
+        };
+
         struct ExprStmt : public Expr, public Stmt {
             unique<Expr> expr;
             ExprStmt(unique<Expr> e) :
@@ -125,22 +199,21 @@ namespace scar {
             SCAR_AST_ACCEPT_OVERRIDE;
         };
 
-        using FunArgList = std::vector<unique<ast::Expr>>;
+        using ArgList = std::vector<unique<ast::Expr>>;
 
         struct FunCall : public Expr, public Stmt {
             Path path;
-            FunArgList args;
-            FunCall(Path path, FunArgList args) :
+            ArgList args;
+            FunCall(Path path, ArgList args) :
                 path(std::move(path)),
                 args(std::move(args))
             {}
             SCAR_AST_ACCEPT_OVERRIDE;
         };
         struct FunCallPrint : public FunCall {
-            FunCallPrint(FunArgList args);
+            FunCallPrint(ArgList args);
             SCAR_AST_ACCEPT_OVERRIDE;
         };
-
 
         struct Module {
             std::vector<unique<Stmt>> stmts;
