@@ -77,6 +77,7 @@ namespace scar {
         Dot,            // .
         DotDot,         // ..
         DotDotDot,      // ...
+        Rarrow,         // ->
 
         Lparen,         // (
         Rparen,         // )

@@ -239,6 +239,10 @@ namespace scar {
                 bump();
                 return Token(MinusMinus);
             }
+            else if (curr() == '>') {
+                bump();
+                return Token(Rarrow);
+            }
             return Token(Minus);
         case '*':
             bump();
