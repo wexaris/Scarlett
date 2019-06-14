@@ -7,17 +7,24 @@
 namespace scar {
 
     template<typename T> using unique = std::unique_ptr<T>;
+    template<typename T> using shared = std::shared_ptr<T>;
     using interned_str_t = std::shared_ptr<std::string>;
 
     namespace ast {
 
-        struct Node {
-            virtual ~Node() = default;
-        private:
+        class Node {
             virtual void accept(struct ASTVisitor* v) = 0;
+        public:
+            virtual ~Node() = default;
         };
         struct Stmt : virtual public Node {};
         struct Expr : virtual public Node {};
+        struct Type : public Node {};
+
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
         struct ASTVisitor {
             virtual ~ASTVisitor() = default;
@@ -32,30 +39,29 @@ namespace scar {
         v->visit(*this); \
     }
 
-        struct Name : public Node {
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
+        struct Name {
             size_t id;
             Name(size_t id = 0) : id(id) {}
+            Name(const Name& other) : id(other.id) {}
             interned_str_t get_str() const;
-            SCAR_AST_ACCEPT_OVERRIDE;
+            bool operator==(const Name& other) const {
+                return id == other.id;
+            }
+            inline bool operator!=(const Name& other) const {
+                return !operator==(other);
+            }
         };
+
         using Path = std::vector<Name>;
 
-        struct Integer : public Expr {
-            size_t val;
-            Integer(size_t val) : val(val) {}
-            SCAR_AST_ACCEPT_OVERRIDE;
-        };
-        struct Float : public Expr {
-            double val;
-            Float(double val) : val(val) {}
-            SCAR_AST_ACCEPT_OVERRIDE;
-        };
-        struct Ident : public Expr {
-            Path path;
-            Ident(Path path) : path(std::move(path)) {}
-            SCAR_AST_ACCEPT_OVERRIDE;
-        };
 
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
         struct UnaryOp : public Expr {
             unique<Expr> atom;
@@ -84,6 +90,10 @@ namespace scar {
 
 #undef SCAR_AST_UNARYOP_DECL
 
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
         struct BinOp : public Expr {
             unique<Expr> lhs;
@@ -118,45 +128,47 @@ namespace scar {
 
 #undef SCAR_AST_BINOP_DECL
 
-        struct Type {
-            enum TyTy {
-                Custom,
 
-                // Primitive
-                Str = (int)TokenType::Str,
-                Char = (int)TokenType::Char,
-                Bool = (int)TokenType::Bool,
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
-                Isize = (int)TokenType::Isize,
-                I8 = (int)TokenType::I8,
-                I16 = (int)TokenType::I16,
-                I32 = (int)TokenType::I32,
-                I64 = (int)TokenType::I64,
-
-                Usize = (int)TokenType::Usize,
-                U8 = (int)TokenType::U8,
-                U16 = (int)TokenType::U16,
-                U32 = (int)TokenType::U32,
-                U64 = (int)TokenType::U64,
-
-                F32 = (int)TokenType::F32,
-                F64 = (int)TokenType::F64
-            } type = Custom;
-            Name custom;
-            Type() = default;
-            Type(TyTy t) : type(t) {}
-            Type(TokenType t) : type(static_cast<TyTy>(t)) {}
-            explicit Type(Name custom) : custom(custom) {}
-            inline bool is_primitive() const { return type != Custom; }
+        struct Integer : public Expr {
+            size_t val;
+            Integer(size_t val) : val(val) {}
+            SCAR_AST_ACCEPT_OVERRIDE;
         };
+
+        struct Float : public Expr {
+            double val;
+            Float(double val) : val(val) {}
+            SCAR_AST_ACCEPT_OVERRIDE;
+        };
+
+        struct Bool : public Expr {
+            bool val;
+            Bool(bool val) : val(val) {}
+            SCAR_AST_ACCEPT_OVERRIDE;
+        };
+
+        struct Ident : public Expr {
+            Path path;
+            Ident(Path path) : path(std::move(path)) {}
+            SCAR_AST_ACCEPT_OVERRIDE;
+        };
+
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
 
         struct VarDecl : public Stmt {
             Name name;
-            Type type;
+            unique<Type> type;
             unique<Expr> val;
-            VarDecl(Name name, Type ty, unique<Expr> val) :
+            VarDecl(Name name, unique<Type> ty, unique<Expr> val) :
                 name(name),
-                type(ty),
+                type(std::move(ty)),
                 val(std::move(val))
             {}
             SCAR_AST_ACCEPT_OVERRIDE;
@@ -164,17 +176,21 @@ namespace scar {
 
         struct Param {
             Name name;
-            Type type;
+            unique<Type> type;
+            Param(Name name, unique<Type> type) :
+                name(name),
+                type(std::move(type))
+            {}
         };
 
         struct FunPrototypeDecl : public Stmt {
             Name name;
             std::vector<Param> params;
-            Type ret;
-            FunPrototypeDecl(Name name, std::vector<Param> params, Type ret) :
+            unique<Type> ret;
+            FunPrototypeDecl(Name name, std::vector<Param> params, unique<Type> ret) :
                 name(name),
-                params(params),
-                ret(ret)
+                params(std::move(params)),
+                ret(std::move(ret))
             {}
             SCAR_AST_ACCEPT_OVERRIDE
         };
@@ -222,6 +238,44 @@ namespace scar {
         struct Package {
             std::vector<Module> mods;
         };
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
+#define SCAR_AST_TYPE_DECL(name) \
+    struct name : public Type { SCAR_AST_ACCEPT_OVERRIDE; }
+
+        SCAR_AST_TYPE_DECL(StrType);
+        SCAR_AST_TYPE_DECL(CharType);
+        SCAR_AST_TYPE_DECL(BoolType);
+
+        SCAR_AST_TYPE_DECL(I8Type);
+        SCAR_AST_TYPE_DECL(I16Type);
+        SCAR_AST_TYPE_DECL(I32Type);
+        SCAR_AST_TYPE_DECL(I64Type);
+
+        SCAR_AST_TYPE_DECL(U8Type);
+        SCAR_AST_TYPE_DECL(U16Type);
+        SCAR_AST_TYPE_DECL(U32Type);
+        SCAR_AST_TYPE_DECL(U64Type);
+
+        SCAR_AST_TYPE_DECL(F32Type);
+        SCAR_AST_TYPE_DECL(F64Type);
+
+        struct CustomType : public Type {
+            Name name;
+            CustomType(ast::Name name) : name(name) {}
+            SCAR_AST_ACCEPT_OVERRIDE;
+        };
+
+#undef SCAR_AST_TYPE_DECL
+
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
 
 #undef SCAR_AST_ACCEPT_OVERRIDE
     }

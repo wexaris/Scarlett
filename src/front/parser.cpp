@@ -145,7 +145,7 @@ namespace scar {
         auto name = expect(Ident).val_s;
         expect(Col);
         auto ty = type();
-        return ast::Param{ name, ty };
+        return ast::Param{ name, std::move(ty) };
     }
 
     // params : '(' param (',' param)* (',')? ')'
@@ -247,7 +247,7 @@ namespace scar {
         }
         expect(Semi);
 
-        return std::make_unique<ast::VarDecl>(name, ty, std::move(val));
+        return std::make_unique<ast::VarDecl>(name, std::move(ty), std::move(val));
     }
 
     // fun_decl : fun_prototype_decl
@@ -271,13 +271,13 @@ namespace scar {
 
         auto parameters = params();
         
-        ast::Type ret;
+        unique<ast::Type> ret;
         if (match(Rarrow)) {
             bump();
             ret = type();
         }
 
-        return std::make_unique<ast::FunPrototypeDecl>(name, std::move(parameters), ret);
+        return std::make_unique<ast::FunPrototypeDecl>(name, std::move(parameters), std::move(ret));
     }
 
     // expr_stmt : expr ';'
@@ -565,16 +565,59 @@ namespace scar {
     //    | ISIZE | I8 | I16 | I32 | I64
     //    | USIZE | U8 | U16 | U32 | U64
     //    | F32 | F64
-    ast::Type Parser::type() {
-        if (match(Ident)) {
-            return ast::Type(expect(Ident).val_s);
+    unique<ast::Type> Parser::type() {
+        switch (tok.type)
+        {
+        case Str:
+            bump();
+            return std::make_unique<ast::StrType>();
+        case Char:
+            bump();
+            return std::make_unique<ast::CharType>();
+        case Bool:
+            bump();
+            return std::make_unique<ast::BoolType>();
+
+        case I8:
+            bump();
+            return std::make_unique<ast::I8Type>();
+        case I16:
+            bump();
+            return std::make_unique<ast::I16Type>();
+        case I32:
+            bump();
+            return std::make_unique<ast::I32Type>();
+        case I64:
+            bump();
+            return std::make_unique<ast::I64Type>();
+
+        case U8:
+            bump();
+            return std::make_unique<ast::I8Type>();
+        case U16:
+            bump();
+            return std::make_unique<ast::I16Type>();
+        case U32:
+            bump();
+            return std::make_unique<ast::I32Type>();
+        case U64:
+            bump();
+            return std::make_unique<ast::I64Type>();
+
+        case F32:
+            bump();
+            return std::make_unique<ast::F32Type>();
+        case F64:
+            bump();
+            return std::make_unique<ast::F64Type>();
+
+        case Ident:
+            return std::make_unique<ast::CustomType>(expect(Ident).val_s);
+
+        default:
+            error_and_throw(tok);
+            return nullptr;
         }
-        auto t_tok = expect(Ident, // Add 'Ident' in case of error message
-            Str, Char, Bool,
-            Isize, I8, I16, I32, I64,
-            Usize, U8, U16, U32, U64,
-            F32, F64);
-        return ast::Type(t_tok.type);
     }
 
 }

@@ -55,7 +55,7 @@ namespace scar {
         unique<ast::Expr> expr(unsigned int prec = 1);
         unique<ast::Expr> expr_atom(unsigned int prec);
 
-        ast::Type type();
+        unique<ast::Type> type();
 
     public:
         Parser(std::string_view path);
