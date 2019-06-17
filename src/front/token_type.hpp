@@ -14,10 +14,9 @@ namespace scar {
         /// Literals
         LitString,
         LitChar,
+        LitBool,
         LitInteger,
         LitFloat,
-        True,
-        False,
 
         /// Keywords
         Var,

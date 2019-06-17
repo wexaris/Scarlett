@@ -5,10 +5,6 @@
 namespace scar {
 
     const std::unordered_map<std::string, TokenType> keyword_map = {
-        /// Literals
-        { "true",       TokenType::True },
-        { "false",      TokenType::False },
-
         /// Keywords
         { "var",        TokenType::Var },
         { "fun",        TokenType::Fun },
@@ -134,11 +130,16 @@ namespace scar {
                 return Token(*type);
             }
 
+            if (ident == "true") {
+                return scar::Token(LitBool, curr_span(), (int64_t)1);
+            }
+            else if (ident == "false") {
+                return scar::Token(LitBool, curr_span(), (int64_t)0);
+            }
+
             return scar::Token(Ident, curr_span(), curr_name());
         }
 
-        // FIXME: add number lexing
-        // Don't forget about binary, octal, and hex prefixes
         if (curr().is_dec()) {
             return lex_number();
         }
@@ -374,7 +375,7 @@ namespace scar {
                     }
                     bump();
                 }
-                log::error("{}: character literals can only contain one codepoint", curr_span());
+                log::critical("{}: character literals can only contain one codepoint", curr_span());
                 return scar::Token(LitChar, curr_span(), false);
             }
 
@@ -435,8 +436,8 @@ namespace scar {
         return Token(END);
     }
 
-    size_t str_to_int(std::string_view str) {
-        size_t val = 0;
+    int64_t str_to_int(std::string_view str) {
+        int64_t val = 0;
         unsigned int base = 10;
         unsigned int pos = 0;
 

@@ -8,7 +8,7 @@ namespace scar {
         span(sp),
         valid(valid)
     {}
-    Token::Token(TokenType ty, Span sp, size_t v) :
+    Token::Token(TokenType ty, Span sp, int64_t v) :
         Token(ty, sp)
     {
         val_i = v;
@@ -36,11 +36,10 @@ namespace scar {
             case Lifetime:      return "lifetime";
             
             case LitString:     return "string literal";
-            case LitChar:       return "char literal";
+            case LitChar:       return "character literal";
+            case LitBool:       return "boolean literal";
             case LitInteger:    return "integer literal";
             case LitFloat:      return "float literal";
-            case True:          return "true";
-            case False:         return "false";
             
             case Var:           return "var";
             case Fun:           return "fun";
@@ -97,6 +96,7 @@ namespace scar {
             case Dot:           return "'.'";
             case DotDot:        return "'..'";
             case DotDotDot:     return "'...'";
+            case Rarrow:        return "'->'";
             
             case Lparen:        return "'('";
             case Rparen:        return "')'";

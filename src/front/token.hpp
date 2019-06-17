@@ -11,13 +11,13 @@ namespace scar {
         Span span;
 
         bool valid      = true;
-        size_t val_i    = 0;
+        int64_t val_i    = 0;
         double val_f    = 0;
         ast::Name val_s = { 0 };
 
         Token() = default;
         Token(TokenType ty, Span sp, bool valid = true);
-        Token(TokenType ty, Span sp, size_t v);
+        Token(TokenType ty, Span sp, int64_t v);
         Token(TokenType ty, Span sp, double v);
         Token(TokenType ty, Span sp, ast::Name v);
 
@@ -38,8 +38,8 @@ namespace scar {
 
         inline std::string_view raw() const { return span.file->read(span.lo.idx, span.hi.idx - span.lo.idx); }
 
-        inline bool has_valid_value() const { return valid; }
-        inline bool is_eof() const          { return type == END; }
+        inline bool is_valid() const { return valid; }
+        inline bool is_eof() const   { return type == END; }
     };
 
 }
