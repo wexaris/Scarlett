@@ -83,6 +83,7 @@ set( SRC_FILES
     src/front/interner.cpp
     src/front/token.cpp
     src/front/ast.cpp
+    src/front/visit/llvm_visitor.cpp
     src/front/lex/lexer.cpp
     src/front/lex/utf_reader.cpp
     src/front/lex/codepoint.cpp

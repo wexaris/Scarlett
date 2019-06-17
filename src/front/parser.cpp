@@ -1,6 +1,5 @@
 #include "parser.hpp"
 #include "log/logging.hpp"
-#include "interner.hpp"
 #include "err/error.hpp"
 #include <unordered_map>
 #include <stack>
@@ -94,22 +93,20 @@ namespace scar {
         tok = lexer.next_token();
     }
 
-    ast::Package Parser::parse() {
-        ast::Package pack;
+    ast::Module Parser::parse() {
+        ast::Module module;
 
         while (!tok.is_eof()) {
             try {
-                auto e = stmt();
-                (void)e;
+                 module.stmts.push_back(stmt());
             }
             catch (const err::RecoveryUnwind&) {
                 error_count++;
                 synchronize();
-                log::info("recovered");
             }
         }
         
-        return pack;
+        return module;
     }
 
     // path : ('::')? ident ('::' ident)*
@@ -149,8 +146,8 @@ namespace scar {
     }
 
     // params : '(' param (',' param)* (',')? ')'
-    std::vector<ast::Param> Parser::params() {
-        std::vector<ast::Param> params;
+    ast::ParamList Parser::params() {
+        ast::ParamList params;
 
         expect(Lparen);
 
@@ -197,18 +194,18 @@ namespace scar {
     }
 
     // block : '{' stmt* '}'
-    ast::Block Parser::block() {
-        ast::Block block = {};
+    unique<ast::Block> Parser::block() {
+        std::vector<unique<ast::Stmt>> stmts;
 
         expect(Lbrace);
 
         while (!match(Rbrace)) {
-            block.push_back(stmt());
+            stmts.push_back(stmt());
         }
 
         expect(Rbrace);
 
-        return block;
+        return std::make_unique<ast::Block>(std::move(stmts));
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -220,14 +217,14 @@ namespace scar {
     unique<ast::Stmt> Parser::stmt() {
         switch (tok.type)
         {
+        case Semi:
+            bump();
+            return stmt();
         case Var:
             return var_decl();
         case Fun:
             return fun_decl();
         default:
-            if (*tok.val_s.get_str() == "print") {
-                return print_stmt();
-            }
             return expr_stmt();
         }
     }
@@ -267,7 +264,9 @@ namespace scar {
     // fun_prototype_decl : FUN ident fun_params (RARROW type)?
     unique<ast::FunPrototypeDecl> Parser::fun_prototype_decl() {
         expect(Fun);
-        auto name = expect(Ident).val_s;
+        auto scopes = path();
+        auto name = scopes.back();
+        scopes.pop_back();
 
         auto parameters = params();
         
@@ -277,7 +276,7 @@ namespace scar {
             ret = type();
         }
 
-        return std::make_unique<ast::FunPrototypeDecl>(name, std::move(parameters), std::move(ret));
+        return std::make_unique<ast::FunPrototypeDecl>(name, std::move(scopes), std::move(parameters), std::move(ret));
     }
 
     // expr_stmt : expr ';'
@@ -285,20 +284,6 @@ namespace scar {
         auto e = expr();
         expect(Semi);
         return std::make_unique<ast::ExprStmt>(std::move(e));
-    }
-
-    // print_stmt : 'print' arg_list ';'
-    unique<ast::FunCallPrint> Parser::print_stmt() {
-        if (*tok.val_s.get_str() != "print") {
-            expect(Ident);
-            return nullptr;
-        }
-        bump();
-
-        auto args = arg_list();
-        expect(Semi);
-
-        return std::make_unique<ast::FunCallPrint>(std::move(args));
     }
 
 
@@ -472,16 +457,6 @@ namespace scar {
         return lhs;
     }
 
-    /* Constructs the appropriate function call expression.
-    Differentiates normal functions from temporary pre-defined ones.
-    TODO: should be removed in the future. */
-    unique<ast::FunCall> make_fun_call(ast::Path&& path, ast::ArgList args) {
-        if (path.size() == 1 && *path[0].get_str() == "print") {
-            return std::make_unique<ast::FunCallPrint>(std::move(args));
-        }
-        return std::make_unique<ast::FunCall>(path, std::move(args));
-    }
-
     unique<ast::Expr> Parser::expr_atom(unsigned int prec) {
         unique<ast::Expr> atom;
 
@@ -511,13 +486,18 @@ namespace scar {
             expect(Rparen);
             break;
 
-        case LitInteger:
-            atom = std::make_unique<ast::Integer>(tok.val_i);
+        case LitBool:
+            atom = std::make_unique<ast::BoolExpr>(static_cast<int8_t>(tok.val_i));
             bump();
             break;
 
-        case LitFloat:
-            atom = std::make_unique<ast::Float>(tok.val_f);
+        case LitInteger: // FIXME: separate int types
+            atom = std::make_unique<ast::I64Expr>(tok.val_i);
+            bump();
+            break;
+
+        case LitFloat: // FIXME: separate float types
+            atom = std::make_unique<ast::F64Expr>(tok.val_f);
             bump();
             break;
 
@@ -528,10 +508,10 @@ namespace scar {
                 // A '(' after an identifier is assumed to be a function call
                 if (match(Lparen)) {
                     auto args = arg_list();
-                    atom = make_fun_call(std::move(id_path), std::move(args));
+                    atom = std::make_unique<ast::FunCall>(std::move(id_path), std::move(args));
                 }
                 else {
-                    atom = std::make_unique<ast::Ident>(id_path);
+                    atom = std::make_unique<ast::VarExpr>(id_path.back()); // FIXME: handle full paths
                 }
             }
             else {

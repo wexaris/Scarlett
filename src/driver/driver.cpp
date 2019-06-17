@@ -1,5 +1,6 @@
 #include "driver.hpp"
 #include "front/parser.hpp"
+#include "front/visit/llvm_visitor.hpp"
 #include "log/logging.hpp"
 
 namespace scar {
@@ -8,10 +9,20 @@ namespace scar {
         log::apply_options(args);
     }
 
-    void Driver::run() {
-        Parser parser = Parser(Session::instance().args.in[0]);
+    void Session::init(int argc, const char** argv) {
+        instance().args = scar::args::parse(argc, argv);
+        instance().apply_args();
+    }
 
-        parser.parse();
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
+
+    void Driver::run() {
+        Parser parser = Parser(Session::instance().get_args().in[0]);
+
+        auto ast = parser.parse();
 
         if (parser.had_error()) {
             auto err_num = parser.err_count();
@@ -21,6 +32,12 @@ namespace scar {
             }
             log::error("build failed due to {}", err_count_str);
         }
+
+        auto visitor = ast::LLVMVisitor(Session::instance().get_symbols());
+
+        ast.accept(visitor);
+
+        visitor.module.print(llvm::errs(), nullptr);
     }
 
 }
