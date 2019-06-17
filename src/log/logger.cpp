@@ -1,6 +1,5 @@
 #include "logger.hpp"
 #include "cmd_args/args.hpp"
-#include "util/logger_ex.hpp"
 #include "util/early_exit.hpp"
 #include "settings.hpp"
 
