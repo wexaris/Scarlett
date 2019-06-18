@@ -1,6 +1,6 @@
 #pragma once
-#include "front/files/source_map.hpp"
-#include "front/span.hpp"
+#include "files/source_map.hpp"
+#include "parse/span.hpp"
 #include "codepoint.hpp"
 
 namespace scar {

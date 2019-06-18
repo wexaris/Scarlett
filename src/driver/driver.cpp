@@ -1,6 +1,6 @@
 #include "driver.hpp"
-#include "front/parser.hpp"
-#include "front/visit/llvm_visitor.hpp"
+#include "parse/parser.hpp"
+#include "ast/visitor/llvm_visitor.hpp"
 #include "log/logging.hpp"
 
 namespace scar {

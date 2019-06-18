@@ -1,5 +1,5 @@
 #include "llvm_visitor.hpp"
-#include "front/interner.hpp"
+#include "symbols/interner.hpp"
 #include "log/logging.hpp"
 
 namespace scar {

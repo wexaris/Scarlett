@@ -1,6 +1,6 @@
 #include "parser.hpp"
 #include "log/logging.hpp"
-#include "err/error.hpp"
+#include "error/error.hpp"
 #include <unordered_map>
 #include <stack>
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "cmd_args/args.hpp"
-#include "front/sym_table.hpp"
+#include "symbols/sym_table.hpp"
 
 namespace scar {
 

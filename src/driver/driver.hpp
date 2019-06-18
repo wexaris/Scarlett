@@ -1,6 +1,6 @@
 #pragma once
 #include "session.hpp"
-#include "front/ast.hpp"
+#include "ast/ast.hpp"
 
 namespace scar {
 

@@ -1,6 +1,6 @@
 #pragma once
-#include "token_type.hpp"
-#include "visit/visitor.hpp"
+#include "parse/token_type.hpp"
+#include "visitor/visitor.hpp"
 #include <vector>
 #include <string>
 #include <memory>

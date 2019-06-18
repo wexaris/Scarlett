@@ -1,7 +1,7 @@
 #pragma once
 #include "visitor.hpp"
-#include "front/sym_table.hpp"
-#include "llvm.hpp"
+#include "symbols/sym_table.hpp"
+#include "ast/llvm.hpp"
 
 namespace scar {
     namespace ast {

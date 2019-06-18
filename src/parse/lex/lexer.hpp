@@ -1,6 +1,6 @@
 #pragma once
 #include "utf_reader.hpp"
-#include "front/token.hpp"
+#include "parse/token.hpp"
 #include <string>
 
 namespace scar {

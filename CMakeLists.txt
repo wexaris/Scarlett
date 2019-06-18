@@ -77,21 +77,21 @@ include_directories(
 
 set( SRC_FILES
     src/main.cpp
+    src/ast/ast.cpp
+    src/ast/visitor/llvm_visitor.cpp
     src/cmd_args/args.cpp
     src/driver/driver.cpp
-    src/front/parser.cpp
-    src/front/interner.cpp
-    src/front/token.cpp
-    src/front/ast.cpp
-    src/front/visit/llvm_visitor.cpp
-    src/front/lex/lexer.cpp
-    src/front/lex/utf_reader.cpp
-    src/front/lex/codepoint.cpp
-    src/front/files/source.cpp
-    src/front/err/error.cpp
+    src/files/source.cpp
     src/log/registry.cpp
     src/log/logger.cpp
     src/log/format/default_fmt.cpp
+    src/parse/error/error.cpp
+    src/parse/lex/codepoint.cpp
+    src/parse/lex/lexer.cpp
+    src/parse/lex/utf_reader.cpp
+    src/parse/parser.cpp
+    src/parse/token.cpp
+    src/symbols/interner.cpp
 )
 
 add_executable( scar ${SRC_FILES} )

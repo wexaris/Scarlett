@@ -1,5 +1,5 @@
 #include "ast.hpp"
-#include "interner.hpp"
+#include "symbols/interner.hpp"
 
 namespace scar {
     namespace ast {

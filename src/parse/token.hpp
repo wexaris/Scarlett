@@ -1,7 +1,7 @@
 #pragma once
 #include "token_type.hpp"
 #include "span.hpp"
-#include "ast.hpp"
+#include "ast/ast.hpp"
 
 namespace scar {
 

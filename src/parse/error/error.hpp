@@ -1,5 +1,5 @@
 #pragma once
-#include "front/token.hpp"
+#include "parse/token.hpp"
 #include "log/log.hpp"
 
 namespace scar {
