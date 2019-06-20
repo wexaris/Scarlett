@@ -1,16 +1,16 @@
 #include "error.hpp"
-#include "log/logging.hpp"
+#include "driver/session.hpp"
 
 namespace scar {
     namespace err {
 
-        ParseError::ParseError(log::LogLevel lvl, std::string msg) :
+        ParseError::ParseError(log::Level lvl, std::string msg) :
             lvl(lvl),
             msg(std::move(msg))
         {}
 
         void ParseError::emit_() const {
-            log::log(lvl, msg);
+            Session::get().logger().make_new(lvl, msg);
         }
 
     }

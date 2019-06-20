@@ -1,5 +1,5 @@
 #include "parser.hpp"
-#include "log/logging.hpp"
+#include "driver/session.hpp"
 #include "error/error.hpp"
 #include <unordered_map>
 #include <stack>
@@ -7,11 +7,11 @@
 namespace scar {
 
     namespace err_help {
-        inline err::ParseError log_spanned(log::LogLevel lvl, const Span& sp, std::string_view msg) {
+        inline err::ParseError log_spanned(log::Level lvl, const Span& sp, std::string_view msg) {
             return err::ParseError::make(lvl, "{}: {}", sp, msg);
         }
         inline err::ParseError err_unexpected(const Span& sp, std::string_view msg) {
-            return log_spanned(log::Error, sp, fmt::format("unexpected {}", msg));
+            return log_spanned(log::Level::Error, sp, fmt::format("unexpected {}", msg));
         }
         inline err::ParseError err_unexpected_ty(const Token& tok) {
             return err_unexpected(tok.span, ttype::to_str(tok.type));
@@ -37,6 +37,8 @@ namespace scar {
     [[noreturn]] void Parser::failed_expect() {
         error_and_throw(tok);
     }
+
+
 
     // Contains all of the TokenTypes that could start a statement.
     // These can be used as synchronization points in error recovery,
@@ -98,10 +100,9 @@ namespace scar {
 
         while (!tok.is_eof()) {
             try {
-                 module.stmts.push_back(stmt());
+                 module.stmts.push_back(stmt(Flags::STMT_GLOBAL));
             }
             catch (const err::RecoveryUnwind&) {
-                error_count++;
                 synchronize();
             }
         }
@@ -200,7 +201,7 @@ namespace scar {
         expect(Lbrace);
 
         while (!match(Rbrace)) {
-            stmts.push_back(stmt());
+            stmts.push_back(stmt(Flags::STMT_BLOCK));
         }
 
         expect(Rbrace);
@@ -214,19 +215,43 @@ namespace scar {
 
     // stmt : expr_stmt
     //      | print_stmt
-    unique<ast::Stmt> Parser::stmt() {
+    unique<ast::Stmt> Parser::stmt(Flags::Stmt flags) {
+        unique<ast::Stmt> ret;
         switch (tok.type)
         {
         case Semi:
             bump();
-            return stmt();
+            ret = stmt(flags);
+            break;
         case Var:
-            return var_decl();
+            ret = var_decl();
+            if (flags & Flags::Stmt::NO_VAR) {
+
+            }
+            break;
+        case Static:
+            ret = static_decl();
+            if (flags & Flags::Stmt::NO_STATIC) {
+
+            }
+            break;
+        case Const:
+            ret = const_decl();
+            if (flags & Flags::Stmt::NO_CONST) {
+
+            }
+            break;
         case Fun:
-            return fun_decl();
+            ret = fun_decl();
+            if (flags & Flags::Stmt::NO_FUN) {
+
+            }
+            break;
         default:
-            return expr_stmt();
+            ret = expr_stmt();
+            break;
         }
+        return ret;
     }
 
     // var_decl : VAR ident ':' type ('=' expr)? ';'
@@ -242,6 +267,40 @@ namespace scar {
             bump();
             val = expr();
         }
+        expect(Semi);
+
+        return std::make_unique<ast::VarDecl>(name, std::move(ty), std::move(val));
+    }
+
+    // static_decl : STATIC ident ':' type ('=' expr)? ';'
+    unique<ast::VarDecl> Parser::static_decl() {
+        expect(Static);
+        auto name = expect(Ident).val_s;
+
+        expect(Col);
+        auto ty = type();
+
+        unique<ast::Expr> val;
+        if (match(Assign)) {
+            bump();
+            val = expr();
+        }
+        expect(Semi);
+
+        return std::make_unique<ast::VarDecl>(name, std::move(ty), std::move(val));
+    }
+
+    // const_decl : CONST ident ':' type '=' expr ';'
+    unique<ast::VarDecl> Parser::const_decl() {
+        expect(Const);
+        auto name = expect(Ident).val_s;
+
+        expect(Col);
+        auto ty = type();
+
+        expect(Assign);
+        auto val = expr();
+
         expect(Semi);
 
         return std::make_unique<ast::VarDecl>(name, std::move(ty), std::move(val));

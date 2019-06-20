@@ -1,6 +1,5 @@
 #pragma once
-#include "log/format/default_fmt.hpp"
-#include <memory>
+#include <string>
 
 namespace scar {
     namespace log {

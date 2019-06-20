@@ -11,7 +11,7 @@ namespace scar {
         private:
             llvm::LLVMContext context;
             llvm::IRBuilder<> builder;
-            shared<SymbolStack> symbol_stack;
+            SymbolStack& symbol_stack;
 
             llvm::Value* value = nullptr;
             llvm::Type* type = nullptr;
@@ -19,7 +19,7 @@ namespace scar {
         public:
             llvm::Module module;
 
-            LLVMVisitor(const shared<SymbolStack>& symbols);
+            LLVMVisitor(SymbolStack& symbols);
 
             bool visit(ExprPreIncrement& node)  override;
             bool visit(ExprPreDecrement& node)  override;

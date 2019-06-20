@@ -1,5 +1,5 @@
 #include "source_map.hpp"
-#include "log/logging.hpp"
+#include "driver/session.hpp"
 
 namespace scar {
     namespace source {
@@ -9,7 +9,7 @@ namespace scar {
             path(path)
         {
             if (!file.is_open()) {
-                log::critical("failed to open file {}", path);
+                Session::get().logger().fail(format("failed to open file {}", path));
             }
 
             file.seekg(0, file.end);
@@ -23,6 +23,11 @@ namespace scar {
             delete[] buff;
 
             file.close();
+        }
+
+        std::string_view SourceFile::read_to_endln(size_t start, size_t count) const {
+            auto text = read(start, count);
+            return (text.substr(0, text.find_first_of('\n')));
         }
 
         std::string_view SourceFile::read(size_t start, size_t count) const {

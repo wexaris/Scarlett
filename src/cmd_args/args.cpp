@@ -1,16 +1,18 @@
 #include "args.hpp"
 #include "option_def.hpp"
-#include "settings.hpp"
+#include "driver/session.hpp"
+#include "util/early_exit.hpp"
+#include "util/settings.hpp"
 
 namespace scar {
     namespace args {
 
         inline void print_version() {
-            log::info("scar {}", version::get_version());
+            Session::get().logger().info(format("scar {}", version::get_version()));
         }
 
         inline void print_usage() {
-            log::info(
+            Session::get().logger().info(
                 "USAGE: scar [options] <input>\n"
                 "\n"
                 "OPTIONS:\n"
@@ -26,8 +28,8 @@ namespace scar {
         }
 
         static std::vector<OptionDef> option_defs{
-            { "-h",         [](ArgTree&) { print_usage(); throw EarlyExit(0); } },
-            { "--version",  [](ArgTree&) { print_version(); throw EarlyExit(0); } },
+            { "-h",         [](ArgTree&) { print_usage(); throw EarlyExit(NO_JOB); } },
+            { "--version",  [](ArgTree&) { print_version(); throw EarlyExit(NO_JOB); } },
             { "-o", 1 },
             { "-g" },
             { "-O" },
@@ -41,7 +43,7 @@ namespace scar {
             // Missing arguments
             if (argc == 1) {
                 print_usage();
-                throw EarlyExit(0);
+                throw EarlyExit(NO_JOB);
             }
 
             std::vector<std::string_view> ifiles;
@@ -52,7 +54,7 @@ namespace scar {
 
             while (!cmd.is_end()) {
                 // Check if arg doesn't start with a dash,
-                // meaning it's anm input file
+                // meaning it's an input file
                 auto arg = cmd.get();
                 if (arg[0] != '-') {
                     ifiles.push_back(arg);
@@ -69,8 +71,8 @@ namespace scar {
                     }
                 }
 
-                log::critical("unrecognized option '{}'", arg);
-                throw EarlyExit(1);
+                Session::get().logger().error(format("unrecognized option '{}'", arg));
+                throw EarlyExit(UNRECOGNIZED_OPT);
 
             next_arg_loop:
                 cmd.next();
@@ -78,8 +80,8 @@ namespace scar {
 
             // Check for missing input files
             if (ifiles.size() == 0) {
-                log::error("missing input files");
-                throw EarlyExit(0);
+                Session::get().logger().error("missing input files");
+                throw EarlyExit(MISSING_PARAM);
             }
 
             // Separate output file parameter
@@ -131,8 +133,8 @@ namespace scar {
                 cmd.next();
 
                 if (cmd.is_end() || cmd.get()[0] == '-') {
-                    log::error("missing parameter after '{}'", first);
-                    throw EarlyExit(1);
+                    Session::get().logger().error(format("missing parameter after '{}'", first));
+                    throw EarlyExit(MISSING_PARAM);
                 }
 
                 auto predef_iter = predef_subs.find(i);
@@ -146,8 +148,8 @@ namespace scar {
                     }
                     bool allow_diff = (*predef_iter).second.first;
                     if (!allow_diff) {
-                        log::error("invalid parameter '{}'", arg);
-                        throw EarlyExit(1);
+                        Session::get().logger().error(format("invalid parameter '{}'", arg));
+                        throw EarlyExit(INVALID_PARAM);
                     }
                 }
                 else {

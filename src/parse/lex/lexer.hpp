@@ -58,7 +58,7 @@ namespace scar {
         /* Returns a string that starts at the given position and goes on until the current one.
         The start position is inclusive. */
         inline std::string_view str_from(const TextPos& start) const {
-            return sf()->read(start.idx, curr_pos().idx - start.idx);
+            return sf()->read_to_endln(start.idx, curr_pos().idx - start.idx);
         }
 
         /* Returns the current token's string.

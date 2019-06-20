@@ -1,5 +1,5 @@
 #include "token.hpp"
-#include "log/logging.hpp"
+#include "driver/session.hpp"
 
 namespace scar {
 
@@ -143,7 +143,7 @@ namespace scar {
             case ShrAssign:     return "'=>>'";
 
             default:
-                log::debug("token.cpp: missing TokenType string for type {}", (int)ty);
+                Session::get().logger().bug(format("token.cpp: missing string for type #{}", (int)ty));
                 return "unknown";
             }
         }

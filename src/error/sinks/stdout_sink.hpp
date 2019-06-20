@@ -1,5 +1,5 @@
 #pragma once
-#include "sink.hpp"
+#include "sink_base.hpp"
 #include "console_vars.hpp"
 
 namespace scar {
@@ -34,6 +34,9 @@ namespace scar {
                     fflush(file);
                 }
             };
+
+            using StdOut = sinks::StdOutSink<console_stdout, console_mutex>;
+            using StdErr = sinks::StdOutSink<console_stdout, console_mutex>;
 
         }
     }

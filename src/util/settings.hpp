@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+#include <sstream>
 
 namespace scar {
     namespace version {
@@ -8,7 +10,9 @@ namespace scar {
         constexpr int PATCH = 1;
 
         inline std::string get_version() {
-            return fmt::format("v{}.{}.{}", MAJOR, MINOR, PATCH);
+            std::stringstream ss;
+            ss << "v" << "." << MAJOR << "." << MINOR << "." << PATCH;
+            return ss.str();
         }
     }
 

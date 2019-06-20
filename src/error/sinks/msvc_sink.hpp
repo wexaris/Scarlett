@@ -1,8 +1,6 @@
 #pragma once
-#include "sink.hpp"
+#include "sink_base.hpp"
 #include "console_vars.hpp"
-#include "fmt/format.h"
-#include "fmt/core.h"
 
 namespace scar {
     namespace log {
@@ -20,6 +18,8 @@ namespace scar {
 
                 inline void flush() final override {}
             };
+
+            using MSVC = sinks::MSVCSink<console_nullmutex>;
 
         }
     }

@@ -81,11 +81,10 @@ set( SRC_FILES
     src/ast/visitor/llvm_visitor.cpp
     src/cmd_args/args.cpp
     src/driver/driver.cpp
+    src/error/emitter.cpp
+    src/error/error.cpp
+    src/error/log_manager.cpp
     src/files/source.cpp
-    src/log/registry.cpp
-    src/log/logger.cpp
-    src/log/format/default_fmt.cpp
-    src/parse/error/error.cpp
     src/parse/lex/codepoint.cpp
     src/parse/lex/lexer.cpp
     src/parse/lex/utf_reader.cpp

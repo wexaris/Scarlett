@@ -17,6 +17,7 @@ namespace scar {
 
             explicit SourceFile(std::string_view path);
 
+            std::string_view read_to_endln(size_t start, size_t count) const;
             std::string_view read(size_t start, size_t count) const;
             char read(size_t pos) const;
 

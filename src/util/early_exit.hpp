@@ -1,4 +1,5 @@
 #pragma once
+#include "err_codes.hpp"
 #include <stdexcept>
 #include <string>
 
@@ -9,7 +10,7 @@ namespace scar {
     public:
         const int code;
 
-        EarlyExit(int code) : code(code) {}
+        EarlyExit(ErrCode code) : code(code) {}
         ~EarlyExit() = default;
 
         inline const char* what() const noexcept override {

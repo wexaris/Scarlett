@@ -4,7 +4,7 @@
 int main(int argc, const char* argv[]) {
 
     try {
-        scar::Session::init(argc, argv);
+        scar::Session::get().init(argc, argv);
 
         scar::Driver driver;
         driver.run();

@@ -1,6 +1,7 @@
 #pragma once
 #include "fmt/format.h"
 #include "fmt/core.h"
+#include <string>
 
 namespace scar {
     namespace fmt_help {

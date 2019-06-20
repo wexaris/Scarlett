@@ -1,11 +1,11 @@
 #include "llvm_visitor.hpp"
 #include "symbols/interner.hpp"
-#include "log/logging.hpp"
+#include "driver/session.hpp"
 
 namespace scar {
     namespace ast {
 
-        LLVMVisitor::LLVMVisitor(const shared<SymbolStack>& symbols) :
+        LLVMVisitor::LLVMVisitor(SymbolStack& symbols) :
             builder(context),
             symbol_stack(symbols),
             module("test", context)
@@ -299,7 +299,7 @@ namespace scar {
         bool LLVMVisitor::visit(FunCall& node) {
             auto fun = module.getFunction(node.path.back().get_strref()); // FIXME: support full paths
             if (!fun) {
-                log::error("function not found");
+                Session::get().logger().error("function not found");
                 RETURN_VALUE_FAIL(nullptr);
             }
 
@@ -372,7 +372,7 @@ namespace scar {
 
             // Check for body redefinition
             if (!fun->empty()) {
-                log::error("function body can't be redefined");
+                Session::get().logger().error("function body can't be redefined");
                 RETURN_VALUE_FAIL(nullptr);
             }
 
@@ -382,11 +382,11 @@ namespace scar {
 
             // Push a new table to the symbol stack
             // Record the function's parameter names
-            symbol_stack->push();
+            symbol_stack.push();
             for (auto& arg : fun->args()) {
                 auto name = Interner::instance().find(arg.getName()).value();
                 auto sym = sym::Symbol(name, sym::Var);
-                symbol_stack->top()->insert(sym, sym::SymInfo(node.prototype.get()));
+                symbol_stack.top()->insert(sym, sym::SymInfo(node.prototype.get()));
             }
 
             // Visit the function's block
@@ -399,11 +399,11 @@ namespace scar {
 
             if (!llvm::verifyFunction(*fun)) {
                 block->eraseFromParent();
-                log::critical("function generation failed");
+                Session::get().logger().fail(format("function generation failed"));
                 RETURN_VALUE_FAIL(nullptr);
             }
 
-            symbol_stack->pop();
+            symbol_stack.pop();
             RETURN_VALUE(fun);
         }
 

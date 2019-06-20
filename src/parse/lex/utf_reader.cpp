@@ -1,6 +1,5 @@
 #include "utf_reader.hpp"
-#include "log/logging.hpp"
-#include "settings.hpp"
+#include "driver/session.hpp"
 #include <string.h>
 
 namespace scar {
@@ -91,7 +90,7 @@ namespace scar {
             return Codepoint(outval);
         }
         else {
-            log::critical("invalid UTF-8; code is too long");
+            Session::get().logger().fail("invalid UTF-8; code is too long");
             return Codepoint(0); // hide 'reaches end of non-void function' warning
         }
     }

@@ -1,6 +1,6 @@
 #pragma once
 #include "parse/token.hpp"
-#include "log/log.hpp"
+#include "log_builder.hpp"
 
 namespace scar {
     namespace err {
@@ -24,6 +24,10 @@ namespace scar {
         };
 
 
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
         struct RecoveryUnwind : public std::exception {};
 
         class ParseError : public ErrorBase<RecoveryUnwind> {
@@ -32,16 +36,23 @@ namespace scar {
             virtual void emit_() const override;
 
         public:
-            log::LogLevel lvl;
+            log::Level lvl;
             std::string msg;
 
-            ParseError(log::LogLevel lvl, std::string msg);
+            ParseError(log::Level lvl, std::string msg);
 
             template<typename... Args>
-            static constexpr err::ParseError make(log::LogLevel lvl, Args&& ... args) {
+            static constexpr err::ParseError make(log::Level lvl, Args&& ... args) {
                 return err::ParseError(lvl, fmt::format(args...));
             }
         };
+
+
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
+        struct FatalError : public std::exception {};
 
     }
 }

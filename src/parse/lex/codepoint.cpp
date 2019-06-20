@@ -1,5 +1,5 @@
 #include "codepoint.hpp"
-#include "log/logging.hpp"
+#include "driver/session.hpp"
 
 namespace scar {
 
@@ -27,7 +27,7 @@ namespace scar {
             s += (char)(0x80 | ((val >> 0) & 0x3F));
         }
         else {
-            log::critical("invalid Unicode codepoint '{:x}'", val);
+            Session::get().logger().fail(format("invalid Unicode codepoint '{:x}'", val));
         }
         return s;
     }

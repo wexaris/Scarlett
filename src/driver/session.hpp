@@ -1,14 +1,16 @@
 #pragma once
 #include "cmd_args/args.hpp"
 #include "symbols/sym_table.hpp"
+#include "error/log_manager.hpp"
 
 namespace scar {
 
     class Session {
 
     private:
-        shared<SymbolStack> sym_stack = std::make_shared<SymbolStack>();
-        args::ParsedArgs args;
+        log::LogManager log_mgr;
+        SymbolStack sym_stack;
+        args::ParsedArgs cmd_args;
 
         Session() = default;
         Session(const Session&) = delete;
@@ -19,15 +21,16 @@ namespace scar {
         void apply_args();
 
     public:
-        static Session& instance() {
+        static Session& get() {
             static Session session;
             return session;
         }
 
-        static void init(int argc, const char** argv);
+        void init(int argc, const char** argv);
 
-        inline const args::ParsedArgs& get_args() const noexcept { return args; }
-        inline shared<SymbolStack> get_symbols() const noexcept { return sym_stack; }
+        inline SymbolStack& symbols() noexcept               { return sym_stack; }
+        inline log::LogManager& logger() noexcept            { return log_mgr; }
+        inline const args::ParsedArgs& args() const noexcept { return cmd_args; }
     };
 
 }
