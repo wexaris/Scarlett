@@ -4,31 +4,37 @@
 #include <string>
 
 namespace scar {
+	namespace early {
 
-    class EarlyExit final : public std::exception {
+		// Shortcut to the end of the application.
+		// For cases when setting up a return circuit isn't worth it.
+		class EarlyExit final : public std::exception {
 
-    public:
-        const int code;
+		public:
+			const int code;
 
-        EarlyExit(ErrCode code) : code(code) {}
-        ~EarlyExit() = default;
+			EarlyExit(int code) : code(code) {}
+			~EarlyExit() = default;
 
-        inline const char* what() const noexcept override {
-            return "";
-        }
-    };
+			inline const char* what() const noexcept override {
+				return "";
+			}
+		};
 
-    class FatalError : public std::exception {
+		// Exit after an unrecoverable error.
+		// Halt the compilation process and escape.
+		class FatalError : public std::exception {
 
-    public:
-        const int code;
+		public:
+			const int code;
 
-        FatalError(int code) : code(code) {}
-        ~FatalError() = default;
+			FatalError(int code) : code(code) {}
+			~FatalError() = default;
 
-        inline const char* what() const noexcept override {
-            return "";
-        }
-    };
-
+			inline const char* what() const noexcept override {
+				return "";
+			}
+		};
+	
+	}
 }

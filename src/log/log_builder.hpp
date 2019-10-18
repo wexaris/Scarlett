@@ -1,6 +1,7 @@
 #pragma once
 #include "parse/span.hpp"
 #include <vector>
+#include <optional>
 
 namespace scar {
     namespace log {
@@ -13,30 +14,40 @@ namespace scar {
                 Warn,
                 Error,
                 Bug,
-                Unimpl,
-                Fail
-            } level;
+                Fail,
+                Unimpl
+            } inner;
 
-            Level(LevelList lvl) : level(lvl) {}
+            Level(LevelList lvl) : inner(lvl) {}
 
-            inline bool operator==(LevelList lvl) const noexcept { return level == lvl; }
-            inline bool operator!=(LevelList lvl) const noexcept { return level != lvl; }
+            inline bool operator==(LevelList lvl) const noexcept { return inner == lvl; }
+            inline bool operator!=(LevelList lvl) const noexcept { return inner != lvl; }
 
-            inline bool operator>(LevelList lvl) const noexcept  { return level > lvl; }
-            inline bool operator>=(LevelList lvl) const noexcept { return level >= lvl; }
-            inline bool operator<(LevelList lvl) const noexcept  { return level < lvl; }
-            inline bool operator<=(LevelList lvl) const noexcept { return level <= lvl; }
+            inline bool operator>(LevelList lvl) const noexcept  { return inner > lvl; }
+            inline bool operator>=(LevelList lvl) const noexcept { return inner >= lvl; }
+            inline bool operator<(LevelList lvl) const noexcept  { return inner < lvl; }
+            inline bool operator<=(LevelList lvl) const noexcept { return inner <= lvl; }
 
             log_t to_str();
         };
 
+        struct Preview {
+            LabledSpan span_lb;
+            std::string_view txt;
+            bool show_pw = false; // Whether should show preview
+        };
+
         struct SubMessage {
             enum Type {
-                Warning,
                 Note,
                 Help
             } type;
+            inline std::string_view type_str() const {
+                if (type == Note) { return "note"; }
+                else              { return "help"; }
+            }
             std::string message;
+            std::optional<Preview> preview;
 
             SubMessage(Type ty, std::string msg);
         };
@@ -48,9 +59,8 @@ namespace scar {
             class LogManager& manager;
 
             Level level;
-            std::vector<LabledSpan> span;
             std::string message;
-            std::vector<std::string_view> preview;
+            std::optional<Preview> preview;
             std::vector<SubMessage> subs;
             uint16_t code = 0;
 
@@ -60,7 +70,8 @@ namespace scar {
             LogBuilder(LogManager& mgr, Level lvl, std::string msg);
 
             LogBuilder& add_span(Span sp, std::string label);
-            LogBuilder& add_previews();
+            LogBuilder& enable_preview();
+            LogBuilder& add_sub(SubMessage sub);
 
             log_t build();
             void compile();
@@ -71,11 +82,11 @@ namespace scar {
             inline void set_level(Level lvl) noexcept { level = lvl; }
 
             inline bool is_fail() const noexcept    { return level >= Level::Fail; }
-            inline bool is_unimpl() const noexcept  { return level == Level::Warn; }
-            inline bool is_bug() const noexcept     { return level == Level::Warn; }
+            inline bool is_unimpl() const noexcept  { return level == Level::Unimpl; }
+            inline bool is_bug() const noexcept     { return level == Level::Bug; }
             inline bool is_error() const noexcept   { return level >= Level::Error; }
             inline bool is_warning() const noexcept { return level == Level::Warn; }
-            inline bool is_info() const noexcept    { return level == Level::Warn; }
+            inline bool is_info() const noexcept    { return level == Level::Info; }
             inline bool is_active() const noexcept  { return active; }
             inline void cancel() noexcept           { active = false; }
         };

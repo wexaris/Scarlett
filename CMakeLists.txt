@@ -66,7 +66,7 @@ message( STATUS "LLVM config location: ${LLVM_DIR}" )
 include_directories( ${LLVM_INCLUDE_DIRS} )
 add_definitions( ${LLVM_DEFINITIONS} )
 
-llvm_map_components_to_libnames( llvm_libs support core irreader )
+llvm_map_components_to_libnames( llvm_libs support core irreader passes )
 
 ####################
 ####################
@@ -78,19 +78,20 @@ include_directories(
 set( SRC_FILES
     src/main.cpp
     src/ast/ast.cpp
+    src/ast/visitor/llvm_opt_visitor.cpp
     src/ast/visitor/llvm_visitor.cpp
     src/cmd_args/args.cpp
     src/driver/driver.cpp
-    src/error/emitter.cpp
-    src/error/error.cpp
-    src/error/log_manager.cpp
     src/files/source.cpp
+    src/log/emitter.cpp
+    src/log/log_manager.cpp
     src/parse/lex/codepoint.cpp
     src/parse/lex/lexer.cpp
     src/parse/lex/utf_reader.cpp
     src/parse/parser.cpp
     src/parse/token.cpp
     src/symbols/interner.cpp
+    src/util/error.cpp
 )
 
 add_executable( scar ${SRC_FILES} )

@@ -1,5 +1,6 @@
 #pragma once
 #include "ast/ast.hpp"
+#include "parse/token_type.hpp"
 #include <unordered_map>
 #include <functional>
 #include <optional>

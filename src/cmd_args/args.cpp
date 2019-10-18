@@ -8,7 +8,7 @@ namespace scar {
     namespace args {
 
         inline void print_version() {
-            Session::get().logger().info(format("scar {}", version::get_version()));
+            Session::get().logger().info(FMT("scar {}", version::get_version()));
         }
 
         inline void print_usage() {
@@ -28,8 +28,8 @@ namespace scar {
         }
 
         static std::vector<OptionDef> option_defs{
-            { "-h",         [](ArgTree&) { print_usage(); throw EarlyExit(NO_JOB); } },
-            { "--version",  [](ArgTree&) { print_version(); throw EarlyExit(NO_JOB); } },
+            { "-h",         [](ArgTree&) { print_usage(); throw early::EarlyExit(err_codes::NO_JOB); } },
+            { "--version",  [](ArgTree&) { print_version(); throw early::EarlyExit(err_codes::NO_JOB); } },
             { "-o", 1 },
             { "-g" },
             { "-O" },
@@ -43,7 +43,7 @@ namespace scar {
             // Missing arguments
             if (argc == 1) {
                 print_usage();
-                throw EarlyExit(NO_JOB);
+                throw early::EarlyExit(err_codes::NO_JOB);
             }
 
             std::vector<std::string_view> ifiles;
@@ -71,8 +71,8 @@ namespace scar {
                     }
                 }
 
-                Session::get().logger().error(format("unrecognized option '{}'", arg));
-                throw EarlyExit(UNRECOGNIZED_OPT);
+                Session::get().logger().error(FMT("unrecognized option '{}'", arg));
+                throw early::EarlyExit(err_codes::UNRECOGNIZED_OPT);
 
             next_arg_loop:
                 cmd.next();
@@ -81,7 +81,7 @@ namespace scar {
             // Check for missing input files
             if (ifiles.size() == 0) {
                 Session::get().logger().error("missing input files");
-                throw EarlyExit(MISSING_PARAM);
+                throw early::EarlyExit(err_codes::MISSING_PARAM);
             }
 
             // Separate output file parameter
@@ -133,8 +133,8 @@ namespace scar {
                 cmd.next();
 
                 if (cmd.is_end() || cmd.get()[0] == '-') {
-                    Session::get().logger().error(format("missing parameter after '{}'", first));
-                    throw EarlyExit(MISSING_PARAM);
+                    Session::get().logger().error(FMT("missing parameter after '{}'", first));
+                    throw early::EarlyExit(err_codes::MISSING_PARAM);
                 }
 
                 auto predef_iter = predef_subs.find(i);
@@ -148,8 +148,8 @@ namespace scar {
                     }
                     bool allow_diff = (*predef_iter).second.first;
                     if (!allow_diff) {
-                        Session::get().logger().error(format("invalid parameter '{}'", arg));
-                        throw EarlyExit(INVALID_PARAM);
+                        Session::get().logger().error(FMT("invalid parameter '{}'", arg));
+                        throw early::EarlyExit(err_codes::INVALID_PARAM);
                     }
                 }
                 else {

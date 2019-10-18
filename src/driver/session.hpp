@@ -1,7 +1,7 @@
 #pragma once
 #include "cmd_args/args.hpp"
 #include "symbols/sym_table.hpp"
-#include "error/log_manager.hpp"
+#include "log/log_manager.hpp"
 
 namespace scar {
 

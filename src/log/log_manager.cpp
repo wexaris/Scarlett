@@ -1,7 +1,8 @@
 #include "log_manager.hpp"
-#include "error.hpp"
 #include "driver/session.hpp"
+#include "util/error.hpp"
 #include "util/early_exit.hpp"
+#include <sstream>
 
 namespace scar {
     namespace log {
@@ -12,7 +13,7 @@ namespace scar {
         {}
 
         log_t Level::to_str() {
-            switch (level)
+            switch (inner)
             {
             case Info:
                 return "info";
@@ -27,7 +28,7 @@ namespace scar {
             case Fail:
                 return "error";
             default:
-                Session::get().logger().bug(format("log_manager.cpp: missing string for level #{}", (int)level));
+                Session::get().logger().bug(FMT("log_manager.cpp: missing string for level #{}", (int)inner));
                 return "unknown";
             }
         }
@@ -44,14 +45,19 @@ namespace scar {
         {}
 
         LogBuilder& LogBuilder::add_span(Span sp, std::string label) {
-            span.push_back(LabledSpan(std::move(sp), std::move(label)));
+            preview = Preview{ LabledSpan(std::move(sp), std::move(label)), sp.file->read(sp.idx, sp.len) };
             return *this;
         }
 
-        LogBuilder& LogBuilder::add_previews() {
-            for (auto& sp : span) {
-                preview.push_back(sp.span.file->read(sp.span.start, sp.span.len));
+        LogBuilder& LogBuilder::enable_preview() {
+            if (preview.has_value()) {
+                preview.value().show_pw = true;
             }
+            return *this;
+        }
+
+        LogBuilder& LogBuilder::add_sub(SubMessage sub) {
+            subs.push_back(std::move(sub));
             return *this;
         }
 
@@ -60,8 +66,42 @@ namespace scar {
             return compiled;
         }
 
-        void LogBuilder::compile() {
+        std::unordered_map<Level::LevelList, col::color_t> level_colors = {
+            { Level::Info,   { col::ansi::reset      }},
+            { Level::Warn,   { col::ansi::fg_yellow  }},
+            { Level::Error,  { col::ansi::fg_red     }},
+            { Level::Bug,    { col::ansi::fg_magenta }},
+            { Level::Unimpl, { col::ansi::fg_magenta }},
+            { Level::Fail,   { col::ansi::fg_red     }},
+        };
 
+        void LogBuilder::compile() {
+            // Print span, if any
+            if (preview && !preview->show_pw) {
+                compiled += FMT("{}: ", preview->span_lb.span);
+            }
+            // Print log level and message
+            auto color = level_colors[level.inner];
+            compiled += col::with_color({ color, col::ansi::bold }, FMT("{}: {}\n", level.to_str(), message));
+            
+            // Print span and preview, if any
+            if (preview && preview->show_pw) {
+                compiled += FMT(" --> {}\n", preview->span_lb.span);
+                // TODO: show preview
+            }
+
+            // Print sub-messages
+            for (auto& sub : subs) {
+                if (sub.preview && !sub.preview->show_pw) {
+                    compiled += FMT("{}: ", sub.preview->span_lb.span);
+                }
+                // Print sub level and message
+                compiled += FMT("{}: {}", sub.type_str(), sub.message);
+                if (preview && preview->show_pw) {
+                    compiled += FMT(" --> {}\n", preview->span_lb.span);
+                    // TODO: show preview
+                }
+            }
         }
 
         void LogBuilder::emit() {
@@ -96,7 +136,7 @@ namespace scar {
                     error_count++;
                 }
                 if (lb.is_fail()) {
-                    throw err::FatalError();
+                    throw err::FatalError(lb.code);
                 }
                 lb.cancel();
                 emitter.log(lb.build());
@@ -109,21 +149,21 @@ namespace scar {
             }
         }
 
-        bool LogManager::print_error_count() {
+        void LogManager::finish() {
+			emit_delayed();
+
             if (error_count == 0) {
-                return false;
+                return;
             }
 
             if (error_count == 1) {
                 error("failed due to the previous error");
-                return true;
             }
             else {
-                error(fmt::format("failed due to {} errors", error_count));
-                return true;
+                error(FMT("failed due to {} errors", error_count));
             }
 
-            throw EarlyExit(ERR_FAILED_BUILD);
+            throw err::FatalError(err_codes::UNKNOWN);
         }
 
         LogBuilder& LogManager::make_new(Level lvl, std::string msg) {
@@ -138,7 +178,7 @@ namespace scar {
             return make_info(msg).add_span(sp, label);
         }
         LogBuilder& LogManager::make_info_span_preview(std::string msg, const Span& sp, const std::string& label) {
-            return make_info(msg).add_span(sp, label).add_previews();
+            return make_info(msg).add_span(sp, label).enable_preview();
         }
         void LogManager::info(std::string msg) {
             emit(make_info(msg));
@@ -151,7 +191,7 @@ namespace scar {
             return make_warn(msg).add_span(sp, label);
         }
         LogBuilder& LogManager::make_warn_span_preview(std::string msg, const Span& sp, const std::string& label) {
-            return make_warn(msg).add_span(sp, label).add_previews();
+            return make_warn(msg).add_span(sp, label).enable_preview();
         }
         void LogManager::warn(std::string msg) {
             emit(make_warn(msg));
@@ -164,7 +204,7 @@ namespace scar {
             return make_error(msg).add_span(sp, label);
         }
         LogBuilder& LogManager::make_error_span_preview(std::string msg, const Span& sp, const std::string& label) {
-            return make_error(msg).add_span(sp, label).add_previews();
+            return make_error(msg).add_span(sp, label).enable_preview();
         }
         void LogManager::error(std::string msg) {
             emit(make_error(msg));
@@ -177,7 +217,7 @@ namespace scar {
             return make_bug(msg).add_span(sp, label);
         }
         LogBuilder& LogManager::make_bug_span_preview(std::string msg, const Span& sp, const std::string& label) {
-            return make_bug(msg).add_span(sp, label).add_previews();
+            return make_bug(msg).add_span(sp, label).enable_preview();
         }
         void LogManager::bug(std::string msg) {
             emit(make_bug(msg));
@@ -197,7 +237,7 @@ namespace scar {
             return make_fail(msg).add_span(sp, label);
         }
         LogBuilder& LogManager::make_fail_span_preview(std::string msg, const Span& sp, const std::string& label) {
-            return make_fail(msg).add_span(sp, label).add_previews();
+            return make_fail(msg).add_span(sp, label).enable_preview();
         }
         void LogManager::fail(std::string msg) {
             emit(make_fail(msg));

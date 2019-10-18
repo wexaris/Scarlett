@@ -29,18 +29,34 @@ namespace scar {
             val_s = other.val_s;
         }
 
-        inline bool operator==(const TokenType& ty) const {
-            return type == ty;
-        }
-        inline bool operator!=(const TokenType& ty) const {
-            return type != ty;
-        }
+        inline bool operator==(const TokenType& ty) const { return type == ty; }
+        inline bool operator!=(const TokenType& ty) const { return type != ty; }
 
-        inline std::string_view raw() const { return span.file->read(span.start, span.len); }
+		// Get a string_view of the corresponding source code fragment
+        inline std::string_view raw() const {
+			return span.file->read(span.idx, span.len);
+		}
 
         inline bool is_valid() const { return valid; }
         inline bool is_eof() const   { return type == END; }
     };
+
+	class TokenStream : public std::vector<Token> {
+
+	private:
+		size_t index = 0;
+
+	public:
+		TokenStream() = default;
+
+		/* Return the current token */
+		inline const Token& get() const { return this->at(index); }
+
+		inline TokenStream& operator++(int) { index++; return *this; }
+		inline TokenStream& operator--(int) { index--; return *this; }
+
+		inline bool is_eof() const { return get().is_eof(); }
+	};
 
 }
 

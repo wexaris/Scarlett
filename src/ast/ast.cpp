@@ -53,13 +53,15 @@ namespace scar {
         //////////////////////////////////////////////////////////////////////////
         //////////////////////////////////////////////////////////////////////////
 
-        UnaryOp::UnaryOp(unique<Expr> atom) :
-            atom(std::move(atom))
+        UnaryOp::UnaryOp(expr_ptr expr, UnaryOp::Kind kind) :
+            expr(std::move(expr)),
+			kind(kind)
         {}
 
-        BinOp::BinOp(unique<Expr> lhs, unique<Expr> rhs) :
+        BinOp::BinOp(expr_ptr lhs, expr_ptr rhs, BinOp::Kind kind) :
             lhs(std::move(lhs)),
-            rhs(std::move(rhs))
+            rhs(std::move(rhs)),
+			kind(kind)
         {}
 
 
@@ -91,14 +93,14 @@ namespace scar {
             args(std::move(args))
         {}
 
-        Block::Block(item_t stmts) : stmts(std::move(stmts)) {}
+        Block::Block(std::vector<stmt_ptr> stmts) : stmts(std::move(stmts)) {}
 
 
         //////////////////////////////////////////////////////////////////////////
         //////////////////////////////////////////////////////////////////////////
         //////////////////////////////////////////////////////////////////////////
 
-        VarDecl::VarDecl(Name name, unique<Type> ty, unique<Expr> val) :
+        VarDecl::VarDecl(Name name, unique<Type> ty, expr_ptr val) :
             name(name),
             type(std::move(ty)),
             val(std::move(val))
@@ -109,9 +111,8 @@ namespace scar {
             type(std::move(ty))
         {}
 
-        FunPrototypeDecl::FunPrototypeDecl(Name name, Path scopes, ParamList params, unique<Type> ret) :
+        FunPrototypeDecl::FunPrototypeDecl(Name name, ParamList params, unique<Type> ret) :
             name(name),
-            scopes(std::move(scopes)),
             params(std::move(params)),
             ret(std::move(ret))
         {}
@@ -125,17 +126,9 @@ namespace scar {
             block(std::move(blk))
         {}
 
-        ExprStmt::ExprStmt(unique<Expr> e) :
+        ExprStmt::ExprStmt(expr_ptr e) :
             expr(std::move(e))
         {}
-
-
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-
-        CustomType::CustomType(ast::Name name) : name(name) {}
-
 
     }
 }

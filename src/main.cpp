@@ -9,10 +9,10 @@ int main(int argc, const char* argv[]) {
         scar::Driver driver;
         driver.run();
     }
-    catch (const scar::FatalError& e) {
+    catch (const scar::early::FatalError& e) {
         return e.code;
     }
-    catch (const scar::EarlyExit& e) {
+    catch (const scar::early::EarlyExit& e) {
         return e.code;
     }
 

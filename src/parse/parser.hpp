@@ -6,7 +6,7 @@ namespace scar {
     class Parser {
 
     private:
-        Lexer lexer;
+		TokenStream tok_steam;
         Token tok;
 
         struct Flags {
@@ -14,13 +14,14 @@ namespace scar {
                 NO_VAR    = 0x01,
                 NO_STATIC = 0x02,
                 NO_CONST  = 0x04,
-                NO_FUN    = 0x08
+                NO_FUN    = 0x08,
+				NO_FLOW	  = 0x10
             };
-            const static Stmt STMT_GLOBAL = (Stmt)(Stmt::NO_VAR);
-            const static Stmt STMT_BLOCK  = (Stmt)(
-                Stmt::NO_STATIC |
-                Stmt::NO_CONST  |
-                Stmt::NO_FUN);
+            static constexpr int STMT_GLOBAL = (int)Stmt::NO_VAR | (int)Stmt::NO_FLOW;
+            static constexpr int STMT_BLOCK  = 
+                (int)Stmt::NO_STATIC |
+				(int)Stmt::NO_CONST  |
+				(int)Stmt::NO_FUN;
         };
 
         Parser(const Parser&) = delete;
@@ -49,7 +50,8 @@ namespace scar {
 
         [[noreturn]] void failed_expect();
         void synchronize();
- 
+        
+        // Get the next token
         void bump();
 
         ast::Path path();
@@ -58,21 +60,22 @@ namespace scar {
         ast::ArgList arg_list();
         unique<ast::Block> block();
 
-        unique<ast::Stmt> stmt(Flags::Stmt flags);
+        ast::stmt_ptr stmt(int flags);
         unique<ast::VarDecl> var_decl();
         unique<ast::VarDecl> const_decl();
         unique<ast::VarDecl> static_decl();
-        unique<ast::Stmt> fun_decl();
+        ast::stmt_ptr fun_decl();
         unique<ast::FunPrototypeDecl> fun_prototype_decl();
-        unique<ast::ExprStmt> expr_stmt();
+		unique<ast::RetStmt> ret_stmt();
+		unique<ast::ExprStmt> expr_stmt();
 
-        unique<ast::Expr> expr(unsigned int prec = 1);
-        unique<ast::Expr> expr_atom(unsigned int prec);
+        ast::expr_ptr expr(unsigned int prec = 1);
+        ast::expr_ptr expr_atom(unsigned int prec);
 
         unique<ast::Type> type();
 
     public:
-        Parser(std::string_view path);
+        Parser(TokenStream& ts);
 
         ast::Module parse();
     };

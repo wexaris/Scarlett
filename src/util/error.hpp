@@ -1,6 +1,7 @@
 #pragma once
 #include "parse/token.hpp"
-#include "log_builder.hpp"
+#include "log/log_builder.hpp"
+#include "early_exit.hpp"
 
 namespace scar {
     namespace err {
@@ -23,11 +24,15 @@ namespace scar {
             }
         };
 
+		// Halt the compilation process and escape.
+		using FatalError = early::FatalError;
+
 
         //////////////////////////////////////////////////////////////////////////
         //////////////////////////////////////////////////////////////////////////
         //////////////////////////////////////////////////////////////////////////
 
+		// Utility class used to recover after compilation errors.
         struct RecoveryUnwind : public std::exception {};
 
         class ParseError : public ErrorBase<RecoveryUnwind> {
@@ -35,24 +40,17 @@ namespace scar {
         private:
             virtual void emit_() const override;
 
+            ParseError(log::Level lvl, std::string msg);
+
         public:
             log::Level lvl;
             std::string msg;
 
-            ParseError(log::Level lvl, std::string msg);
-
             template<typename... Args>
-            static constexpr err::ParseError make(log::Level lvl, Args&& ... args) {
-                return err::ParseError(lvl, fmt::format(args...));
+            static constexpr err::ParseError make(log::Level lvl, Args&&... args) {
+                return err::ParseError(lvl, FMT(args...));
             }
         };
-
-
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-
-        struct FatalError : public std::exception {};
 
     }
 }

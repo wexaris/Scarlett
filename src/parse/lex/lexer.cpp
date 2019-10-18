@@ -83,8 +83,8 @@ namespace scar {
                 while (!(curr() == '*' && next() == '/')) {
                     // Don't allow unclosed comments at end of file
                     if (curr().is_eof()) {
-                        comment_sp.len = curr_pos().idx - comment_sp.start;
-                        Session::get().logger().fail(format("{}: unexpected end of file", comment_sp, curr()));
+                        comment_sp.len = curr_pos().idx - comment_sp.idx;
+                        Session::get().logger().fail(FMT("{}: unexpected end of file", comment_sp, curr()));
                         return;
                     }
                     bump();
@@ -97,21 +97,17 @@ namespace scar {
 
     Token Lexer::next_token() {
 
-        skip_ws_and_comments();
+		skip_ws_and_comments();
+		tok_start_pos = curr_pos();
 
-        tok_start_pos = curr_pos();
+		// Return 'END' token if we're at the end of the file
+		if (curr().is_eof()) {
+			return Token(END, curr_span());
+		}
 
-        // Return 'END' token if we're at the end of the file
-        if (curr().is_eof()) {
-            return Token(END, curr_span());
-        }
 
-        return tokenize_next();
-    }
-
-    Token Lexer::tokenize_next() {
-
-        auto Token = [&](TokenType ty) -> scar::Token {
+		// Convenient token construction
+        auto Token = [this](TokenType ty) -> scar::Token {
             return scar::Token(ty, curr_span());
         };
 
@@ -305,7 +301,7 @@ namespace scar {
                 bump();
 
                 auto sp = Span(sf(), bad_start, curr_pos());
-                Session::get().logger().error(format("{}: unexpected symbol '{}'", sp, curr()));
+                Session::get().logger().error(FMT("{}: unexpected symbol '{}'", sp, curr()));
                 
                 return scar::Token(LitChar, curr_span(), Interner::instance().intern(""));
             }
@@ -322,7 +318,7 @@ namespace scar {
                 // Check for ending '\''
                 if (curr() == '\'') {
                     bump(); // go past ending '\''
-                    Session::get().logger().error(format("{}: character literals can only contain one codepoint", curr_span()));
+                    Session::get().logger().error(FMT("{}: character literals can only contain one codepoint", curr_span()));
                     return Token(LitChar);
                 }
 
@@ -332,7 +328,7 @@ namespace scar {
             // Newlines and tabs aren't allowed inside characters
             if ((curr() == '\n' || curr() == '\r' || curr() == '\t') && curr() == '\'') {
                 bump();
-                Session::get().logger().fail(format("{}: special characters need to be written with escape symbols", curr_span()));
+                Session::get().logger().fail(FMT("{}: special characters need to be written with escape symbols", curr_span()));
             }
 
             Codepoint ch = curr();
@@ -356,7 +352,7 @@ namespace scar {
                     bump();
 
                     auto sp = Span(sf(), bad_start, curr_pos());
-                    Session::get().logger().fail(format("{}: unexpected symbol '{}'", sp, curr()));
+                    Session::get().logger().fail(FMT("{}: unexpected symbol '{}'", sp, curr()));
                 }
                 bump();
             }
@@ -375,7 +371,7 @@ namespace scar {
                     }
                     bump();
                 }
-                Session::get().logger().fail(format("{}: character literals can only contain one codepoint", curr_span()));
+                Session::get().logger().fail(FMT("{}: character literals can only contain one codepoint", curr_span()));
                 return scar::Token(LitChar, curr_span(), false);
             }
 
@@ -391,7 +387,7 @@ namespace scar {
             while (curr() != '\"') {
                 // The string literal reaches EOF
                 if (curr().is_eof()) {
-                    Session::get().logger().fail(format("{}: string literal missing end quote", curr_span()));
+                    Session::get().logger().fail(FMT("{}: string literal missing end quote", curr_span()));
                     return Token(END);
                 }
 
@@ -416,7 +412,7 @@ namespace scar {
                         bump();
 
                         auto sp = Span(sf(), bad_start, curr_pos());
-                        Session::get().logger().fail(format("{}: unexpected symbol '{}'", sp, curr()));
+                        Session::get().logger().fail(FMT("{}: unexpected symbol '{}'", sp, curr()));
                     }
                     bump();
                 }
@@ -430,7 +426,7 @@ namespace scar {
 
         default:
             bump();
-            Session::get().logger().fail(format("{}: unexpected symbol '{}'", curr_span(), curr()));
+            Session::get().logger().fail(FMT("{}: unexpected symbol '{}'", curr_span(), curr()));
         }
 
         return Token(END);
@@ -525,7 +521,7 @@ namespace scar {
                 if (!curr().is_bin()) {
                     bump();
                     valid = false;
-                    Session::get().logger().fail(format("{}: binary number missing value", curr_span()));
+                    Session::get().logger().fail(FMT("{}: binary number missing value", curr_span()));
                 }
             }
             else if (next() == 'o') {
@@ -535,7 +531,7 @@ namespace scar {
                 if (!curr().is_oct()) {
                     bump();
                     valid = false;
-                    Session::get().logger().fail(format("{}: octal number missing value", curr_span()));
+                    Session::get().logger().fail(FMT("{}: octal number missing value", curr_span()));
                 }
             }
             else if (next() == 'x') {
@@ -545,7 +541,7 @@ namespace scar {
                 if (!curr().is_hex()) {
                     bump();
                     valid = false;
-                    Session::get().logger().fail(format("{}: hexadecimal number missing value", curr_span()));
+                    Session::get().logger().fail(FMT("{}: hexadecimal number missing value", curr_span()));
                 }
             }
         }
@@ -558,7 +554,7 @@ namespace scar {
             if (base != 10) {
                 read_fraction();
                 read_exponent();
-                Session::get().logger().fail(format("{}: only decimal numbers support fractions and exponents", curr_span()));
+                Session::get().logger().fail(FMT("{}: only decimal numbers support fractions and exponents", curr_span()));
                 return Token(LitFloat, curr_span(), false);
             }
         }
@@ -617,7 +613,7 @@ namespace scar {
                 return false;
             }
             else {
-                Session::get().logger().fail(format("{}: exponent requires a value", curr_span()));
+                Session::get().logger().fail(FMT("{}: exponent requires a value", curr_span()));
                 return false;
             }
         }
@@ -629,11 +625,11 @@ namespace scar {
 
         for (; num > 0; num--) {
             if (curr().is_eof()) {
-                Session::get().logger().fail(format("{}: incomplete numeric escape", curr_span()));
+                Session::get().logger().fail(FMT("{}: incomplete numeric escape", curr_span()));
                 return Codepoint(0);
             }
             if (curr() == delim) {
-                Session::get().logger().error(format("{}: numeric escape is too short", curr_span()));
+                Session::get().logger().error(FMT("{}: numeric escape is too short", curr_span()));
                 number = 0xFFFD;
                 break;
             }
@@ -644,7 +640,7 @@ namespace scar {
                 number += *n;
             }
             else {
-                Session::get().logger().error(format("{}: invalid numeric escape: '{}'", curr_span(), curr_str()));
+                Session::get().logger().error(FMT("{}: invalid numeric escape: '{}'", curr_span(), curr_str()));
                 number = 0xFFFD;
                 break;
             }
@@ -652,7 +648,7 @@ namespace scar {
         }
 
         if (!range::is_char(number)) {
-            Session::get().logger().error(format("{}: invalid numeric escape: '{}'", curr_span(), curr_str()));
+            Session::get().logger().error(FMT("{}: invalid numeric escape: '{}'", curr_span(), curr_str()));
             number = 0xFFFD;
         }
 

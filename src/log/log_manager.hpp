@@ -1,16 +1,20 @@
 #pragma once
 #include "log_builder.hpp"
 #include "emitter.hpp"
-#include "cmd_args/args.hpp"
 #include <memory>
 
 namespace scar {
+
+    namespace args {
+        struct ParsedArgs;
+    }
+
     namespace log {
 
         class LogManager {
 
             Emitter emitter = Emitter(std::make_shared<sinks::StdOut>());
-            int32_t error_count = 0;
+			size_t error_count = 0;
 
             std::vector<LogBuilder> delayed;
 
@@ -22,6 +26,7 @@ namespace scar {
             /* Modifies the given `LogBuilder` to fit command line parameters. */
             void update_according_to_args(LogBuilder& lb);
 
+
         public:
             LogManager() = default;
 
@@ -31,16 +36,20 @@ namespace scar {
             Applies effects specified by command line parameters.
             The `LogBuilder` is disabled after emission. */
             void emit(LogBuilder& lb);
+			/* Emits all of the `LogBuilder` instances that haven't emitted yet. */
+			void emit_delayed();
 
-            /* Emits all of the `LogBuilder` instances that haven't emitted yet. */
-            void emit_delayed();
+			/* Prints delayed errors and throws an `EarlyExit` exception, if there were any. */
+			void finish();
 
-            inline bool had_error() const noexcept    { return error_count > 0; }
-            inline int32_t err_count() const noexcept { return error_count; }
-
-            /* Prints number of errors, due to which the build failed.
-            Returns false if no errors were emitted, true otherwise. */
-            bool print_error_count();
+			/* Returns true if there have been errors. */
+			inline bool has_delayed() const noexcept		{ return delayed.size() > 0; }
+			/* Returns true if there have been errors. */
+			inline size_t delayed_count() const noexcept	{ return delayed.size(); }
+            /* Returns true if there have been errors. */
+            inline bool had_error() const noexcept			{ return error_count > 0; }
+            /* Returns error count. */
+            inline size_t err_count() const noexcept		{ return error_count; }
 
             LogBuilder& make_new(Level lvl, std::string msg);
 
@@ -74,10 +83,4 @@ namespace scar {
         };
 
     }
-
-    template<typename S, typename... Args>
-    inline std::string format(const S& format_str, const Args&... args) {
-        return fmt::format(format_str, args...);
-    }
-
 }

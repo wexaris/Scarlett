@@ -27,7 +27,7 @@ namespace scar {
             s += (char)(0x80 | ((val >> 0) & 0x3F));
         }
         else {
-            Session::get().logger().fail(format("invalid Unicode codepoint '{:x}'", val));
+            Session::get().logger().fail(FMT("invalid Unicode codepoint '{:x}'", val));
         }
         return s;
     }

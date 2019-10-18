@@ -4,13 +4,15 @@
 // work together as they should, including the parser, lexer,
 // error handling system etc.
 
-::foo::bar::val + 4e1 / 0.666e4 * 1 + 0.9898;
+//::foo::bar::val + 4e1 / 0.666e4 * 1 + 0.9898;
 
-fun main(b: bool, s: str) -> i32 {
-    var i: i32 = x - 6 * -2 / 2 + 1;
+fun main(b: f32, s: bool) -> f32 {
+    b = 1.0;
+	var x: f32 = 42.0;
+	return x;
 }
 
-print(!ff(42,) + d);
+//main(~true, false);
 
 /*mod main;
 

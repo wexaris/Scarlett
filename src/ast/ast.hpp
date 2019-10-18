@@ -1,5 +1,4 @@
 #pragma once
-#include "parse/token_type.hpp"
 #include "visitor/visitor.hpp"
 #include <vector>
 #include <string>
@@ -14,103 +13,144 @@ namespace scar {
 
     namespace ast {
 
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+
+		struct Name {
+			size_t id;
+			Name(size_t id = 0);
+			interned_str_t get_str() const;
+			std::string& get_strref() const;
+			bool operator==(const Name& other) const;
+			bool operator!=(const Name& other) const;
+		};
+
+		using Path = std::vector<Name>;
+
+
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+
         struct Node {
             virtual ~Node() = default;
             virtual bool accept(ASTVisitor& v) = 0;
         };
-        struct Stmt : virtual public Node {};
-        struct Expr : virtual public Node {};
-        struct Type : public Node {};
 
 #define SCAR_AST_ACCEPT_OVERRIDE \
     bool accept(ASTVisitor& v) override { \
         return v.visit(*this); \
-    }
+    }	
 
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
 
-        struct Name {
-            size_t id;
-            Name(size_t id = 0);
-            interned_str_t get_str() const;
-            std::string& get_strref() const;
-            bool operator==(const Name& other) const;
-            bool operator!=(const Name& other) const;
-        };
+		struct Type : public Node {
+			enum TypeKind {
+				Unknown,
+				StrType,
+				CharType,
+				BoolType,
+				I8Type,
+				I16Type,
+				I32Type,
+				I64Type,
+				U8Type,
+				U16Type,
+				U32Type,
+				U64Type,
+				F32Type,
+				F64Type,
+				Custom,
+				Void
+			} kind;
+			Name custom_name;
 
-        using Path = std::vector<Name>;
-
-
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-
-        struct UnaryOp : public Expr {
-            unique<Expr> atom;
-            UnaryOp(unique<Expr> atom);
-        };
-
-#define SCAR_AST_UNARYOP_DECL(name, ...) \
-    struct name : public UnaryOp { \
-        name(unique<Expr> atom) : \
-            UnaryOp(std::move(atom)) {} \
-        SCAR_AST_ACCEPT_OVERRIDE; \
-        __VA_ARGS__\
-    }
-
-        SCAR_AST_UNARYOP_DECL(ExprPreIncrement, );
-        SCAR_AST_UNARYOP_DECL(ExprPreDecrement, );
-        SCAR_AST_UNARYOP_DECL(ExprPostIncrement, );
-        SCAR_AST_UNARYOP_DECL(ExprPostDecrement, );
-        SCAR_AST_UNARYOP_DECL(ExprNegative, );
-        SCAR_AST_UNARYOP_DECL(ExprNot, );
-        SCAR_AST_UNARYOP_DECL(ExprBitNot, );
-        SCAR_AST_UNARYOP_DECL(ExprDeref, );
-        SCAR_AST_UNARYOP_DECL(ExprAddress, );
-
-#undef SCAR_AST_UNARYOP_DECL
+			Type() : kind(Unknown) {}
+			Type(Name name) : kind(Custom), custom_name(name) {}
+			Type(TypeKind kind) : kind(kind) {}
+			SCAR_AST_ACCEPT_OVERRIDE;
+		};
 
 
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+
+		struct Expr : virtual public Node { Type type; };
+		using expr_ptr = unique<Expr>;
+		struct Stmt : virtual public Node {};
+		using stmt_ptr = unique<Stmt>;
+
+
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////
 
         struct BinOp : public Expr {
-            unique<Expr> lhs;
-            unique<Expr> rhs;
-            BinOp(unique<Expr> lhs, unique<Expr> rhs);
-        };
+			expr_ptr lhs;
+			expr_ptr rhs;
 
-#define SCAR_AST_BINOP_DECL(name, ...) \
-    struct name : public BinOp { \
-        name(unique<Expr> lhs, unique<Expr> rhs) : \
-            BinOp(std::move(lhs), std::move(rhs)) {} \
-        SCAR_AST_ACCEPT_OVERRIDE; \
-        __VA_ARGS__\
-    }
+			enum Kind {
+				Scope,
+				MemberAccess,
+				Sum,
+				Sub,
+				Mul,
+				Div,
+				Mod,
+				Eq,
+				NotEq,
+				Greater,
+				Lesser,
+				GreaterEq,
+				LesserEq,
+				LogicAnd,
+				LogicOr,
+				BitAnd,
+				BitOr,
+				BitXOr,
+				Shl,
+				Shr,
+				Assign,
+				PlusAssign,
+				MinusAssign,
+				MulAssign,
+				DivAssign,
+				ModAssign,
+				AndAssign,
+				OrAssign,
+				XorAssign,
+				ShlAssign,
+				ShrAssign,
+			} kind;
 
-        SCAR_AST_BINOP_DECL(ExprMemberAccess, );
-        SCAR_AST_BINOP_DECL(ExprSum, );
-        SCAR_AST_BINOP_DECL(ExprSub, );
-        SCAR_AST_BINOP_DECL(ExprMul, );
-        SCAR_AST_BINOP_DECL(ExprDiv, );
-        SCAR_AST_BINOP_DECL(ExprMod, );
-        SCAR_AST_BINOP_DECL(ExprLogicAnd, );
-        SCAR_AST_BINOP_DECL(ExprLogicOr, );
-        SCAR_AST_BINOP_DECL(ExprBitAnd, );
-        SCAR_AST_BINOP_DECL(ExprBitOr, );
-        SCAR_AST_BINOP_DECL(ExprBitXOr, );
-        SCAR_AST_BINOP_DECL(ExprShl, );
-        SCAR_AST_BINOP_DECL(ExprShr, );
+            BinOp(expr_ptr lhs, expr_ptr rhs, Kind kind);
+			SCAR_AST_ACCEPT_OVERRIDE;
+		};
 
-#undef SCAR_AST_BINOP_DECL
+		struct UnaryOp : public Expr {
+			expr_ptr expr;
 
+			enum Kind {
+				GlobalAccess,
+				PreIncrement,
+				PreDecrement,
+				PostIncrement,
+				PostDecrement,
+				Positive,
+				Negative,
+				Not,
+				BitNot,
+				Deref,
+				Address
+			} kind;
 
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
+			UnaryOp(expr_ptr expr, Kind kind);
+			SCAR_AST_ACCEPT_OVERRIDE;
+		};
 
         struct StrExpr : public Expr {
             Name val;
@@ -171,7 +211,7 @@ namespace scar {
         };
 
         struct F32Expr : public Expr {
-            double val;
+            float val;
             F32Expr(double val);
             SCAR_AST_ACCEPT_OVERRIDE;
         };
@@ -187,7 +227,7 @@ namespace scar {
             SCAR_AST_ACCEPT_OVERRIDE;
         };
 
-        using ArgList = std::vector<unique<ast::Expr>>;
+        using ArgList = std::vector<ast::expr_ptr>;
 
         struct FunCall : public Expr, public Stmt {
             Path path;
@@ -197,9 +237,8 @@ namespace scar {
         };
 
         struct Block : public Expr, public Stmt {
-            using item_t = std::vector<std::unique_ptr<Stmt>>;
-            item_t stmts;
-            Block(item_t stmts);
+			std::vector<stmt_ptr> stmts;
+            Block(std::vector<stmt_ptr> stmts);
             SCAR_AST_ACCEPT_OVERRIDE;
         };
 
@@ -210,8 +249,8 @@ namespace scar {
         struct VarDecl : public Stmt {
             Name name;
             unique<Type> type;
-            unique<Expr> val;
-            VarDecl(Name name, unique<Type> ty, unique<Expr> val);
+            expr_ptr val;
+            VarDecl(Name name, unique<Type> ty, expr_ptr val);
             SCAR_AST_ACCEPT_OVERRIDE;
         };
 
@@ -225,10 +264,9 @@ namespace scar {
 
         struct FunPrototypeDecl : public Stmt {
             Name name;
-            Path scopes;
             ParamList params;
             unique<Type> ret;
-            FunPrototypeDecl(Name name, Path scopes, ParamList params, unique<Type> ret);
+            FunPrototypeDecl(Name name, ParamList params, unique<Type> ret);
             std::string signature() const;
             SCAR_AST_ACCEPT_OVERRIDE
         };
@@ -240,48 +278,27 @@ namespace scar {
             SCAR_AST_ACCEPT_OVERRIDE
         };
 
+		struct RetVoidStmt : public Stmt {
+			RetVoidStmt() = default;
+			SCAR_AST_ACCEPT_OVERRIDE;
+		};
+
+		struct RetStmt : public Stmt {
+			expr_ptr expr;
+			RetStmt(expr_ptr e) : expr(std::move(e)) {}
+			SCAR_AST_ACCEPT_OVERRIDE;
+		};
+
         struct ExprStmt : public Expr, public Stmt {
-            unique<Expr> expr;
-            ExprStmt(unique<Expr> e);
+            expr_ptr expr;
+            ExprStmt(expr_ptr e);
             SCAR_AST_ACCEPT_OVERRIDE;
         };
 
         struct Module : public Node {
-            std::vector<unique<Stmt>> stmts;
+            std::vector<stmt_ptr> stmts;
             SCAR_AST_ACCEPT_OVERRIDE;
         };
-
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-
-#define SCAR_AST_TYPE_DECL(name) \
-    struct name : public Type { SCAR_AST_ACCEPT_OVERRIDE; }
-
-        SCAR_AST_TYPE_DECL(StrType);
-        SCAR_AST_TYPE_DECL(CharType);
-        SCAR_AST_TYPE_DECL(BoolType);
-
-        SCAR_AST_TYPE_DECL(I8Type);
-        SCAR_AST_TYPE_DECL(I16Type);
-        SCAR_AST_TYPE_DECL(I32Type);
-        SCAR_AST_TYPE_DECL(I64Type);
-
-        SCAR_AST_TYPE_DECL(U8Type);
-        SCAR_AST_TYPE_DECL(U16Type);
-        SCAR_AST_TYPE_DECL(U32Type);
-        SCAR_AST_TYPE_DECL(U64Type);
-
-        SCAR_AST_TYPE_DECL(F32Type);
-        SCAR_AST_TYPE_DECL(F64Type);
-
-        struct CustomType : public Type {
-            Name name;
-            CustomType(ast::Name name);
-            SCAR_AST_ACCEPT_OVERRIDE;
-        };
-
-#undef SCAR_AST_TYPE_DECL
 
 
         //////////////////////////////////////////////////////////////////////////
@@ -292,3 +309,25 @@ namespace scar {
 #undef SCAR_AST_ACCEPT_OVERRIDE
     }
 }
+
+template<>
+struct std::hash<scar::ast::Name> {
+    inline size_t operator()(const scar::ast::Name& n) const {
+        std::hash<size_t> hash;
+        return hash(n.id);
+    }
+};
+
+#include "fmt/format.h"
+
+template<>
+struct fmt::formatter<scar::ast::Name> {
+
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const scar::ast::Name& n, FormatContext& ctx) {
+        return fmt::format_to(ctx.out(), "{}", n.get_strref());
+    }
+};

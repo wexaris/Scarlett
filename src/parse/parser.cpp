@@ -1,6 +1,6 @@
 #include "parser.hpp"
 #include "driver/session.hpp"
-#include "error/error.hpp"
+#include "util/error.hpp"
 #include <unordered_map>
 #include <stack>
 
@@ -11,16 +11,16 @@ namespace scar {
             return err::ParseError::make(lvl, "{}: {}", sp, msg);
         }
         inline err::ParseError err_unexpected(const Span& sp, std::string_view msg) {
-            return log_spanned(log::Level::Error, sp, fmt::format("unexpected {}", msg));
+            return log_spanned(log::Level::Error, sp, FMT("unexpected {}", msg));
         }
         inline err::ParseError err_unexpected_ty(const Token& tok) {
             return err_unexpected(tok.span, ttype::to_str(tok.type));
         }
     }
 
-    Parser::Parser(std::string_view path) :
-        lexer(path),
-        tok(lexer.next_token())
+    Parser::Parser(TokenStream& ts) :
+        tok_steam(ts),
+		tok(tok_steam.get())
     {}
 
     [[noreturn]] void error_and_throw(const Token& tok) {
@@ -92,7 +92,8 @@ namespace scar {
     }
 
     void Parser::bump() {
-        tok = lexer.next_token();
+        tok_steam++;
+		tok = tok_steam.get();
     }
 
     ast::Module Parser::parse() {
@@ -196,7 +197,7 @@ namespace scar {
 
     // block : '{' stmt* '}'
     unique<ast::Block> Parser::block() {
-        std::vector<unique<ast::Stmt>> stmts;
+        std::vector<ast::stmt_ptr> stmts;
 
         expect(Lbrace);
 
@@ -215,13 +216,12 @@ namespace scar {
 
     // stmt : expr_stmt
     //      | print_stmt
-    unique<ast::Stmt> Parser::stmt(Flags::Stmt flags) {
-        unique<ast::Stmt> ret;
+    ast::stmt_ptr Parser::stmt(int flags) {
+        ast::stmt_ptr ret;
         switch (tok.type)
         {
         case Semi:
             bump();
-            ret = stmt(flags);
             break;
         case Var:
             ret = var_decl();
@@ -244,9 +244,15 @@ namespace scar {
         case Fun:
             ret = fun_decl();
             if (flags & Flags::Stmt::NO_FUN) {
-
+				Session::get().logger().make_error("function declarations not allowed here");
             }
             break;
+		case Return:
+			ret = ret_stmt();
+			if (flags & Flags::Stmt::NO_FLOW) {
+				Session::get().logger().make_error("function declarations not allowed here");
+			}
+			break;
         default:
             ret = expr_stmt();
             break;
@@ -262,7 +268,7 @@ namespace scar {
         expect(Col);
         auto ty = type();
 
-        unique<ast::Expr> val;
+        ast::expr_ptr val;
         if (match(Assign)) {
             bump();
             val = expr();
@@ -280,7 +286,7 @@ namespace scar {
         expect(Col);
         auto ty = type();
 
-        unique<ast::Expr> val;
+        ast::expr_ptr val;
         if (match(Assign)) {
             bump();
             val = expr();
@@ -308,24 +314,23 @@ namespace scar {
 
     // fun_decl : fun_prototype_decl
     //          | fun_prototype_decl block
-    unique<ast::Stmt> Parser::fun_decl() {
+    ast::stmt_ptr Parser::fun_decl() {
         auto prototype = fun_prototype_decl();
 
         if (!match(Lbrace)) {
+			expect(Semi);
             return prototype;
         }
         auto blk = block();
 
-        return static_cast<unique<ast::Stmt>>(
+        return static_cast<ast::stmt_ptr>(
             std::make_unique<ast::FunDecl>(std::move(prototype), std::move(blk)));
     }
 
-    // fun_prototype_decl : FUN ident fun_params (RARROW type)?
+    // fun_prototype_decl : FUN ident params (RARROW type)?
     unique<ast::FunPrototypeDecl> Parser::fun_prototype_decl() {
         expect(Fun);
-        auto scopes = path();
-        auto name = scopes.back();
-        scopes.pop_back();
+        auto name = expect(Ident).val_s;
 
         auto parameters = params();
         
@@ -334,9 +339,21 @@ namespace scar {
             bump();
             ret = type();
         }
+		else {
+			ret = std::make_unique<ast::Type>(ast::Type::Void);
+		}
 
-        return std::make_unique<ast::FunPrototypeDecl>(name, std::move(scopes), std::move(parameters), std::move(ret));
+        return std::make_unique<ast::FunPrototypeDecl>(name, std::move(parameters), std::move(ret));
     }
+
+	// ret_stmt : RETURN expr ';'
+	unique<ast::RetStmt> Parser::ret_stmt() {
+		expect(Return);
+		ast::expr_ptr ex;
+		if (!match(Semi)) { ex = expr(); }
+		expect(Semi);
+		return std::make_unique<ast::RetStmt>(std::move(ex));
+	}
 
     // expr_stmt : expr ';'
     unique<ast::ExprStmt> Parser::expr_stmt() {
@@ -354,143 +371,91 @@ namespace scar {
     correct operator handling while parsing expressions. */
     namespace op {
 
-        constexpr bool is_preop(TokenType ty) {
-            return
-                ty == PlusPlus || ty == MinusMinus ||
-                ty == Plus     || ty == Minus ||
-                ty == Not      || ty == BitNot ||
-                ty == Star     || ty == BitAnd;
+		struct OpInfo {
+			unsigned int prec;
+			enum Assoc { LEFT, RIGHT } assoc;
+
+			OpInfo(unsigned int prec, Assoc assoc, ast::UnaryOp::Kind op) : prec(prec), assoc(assoc), opcode((int)op) {}
+			OpInfo(unsigned int prec, Assoc assoc, ast::BinOp::Kind op) : prec(prec), assoc(assoc), opcode((int)op) {}
+
+			inline ast::UnaryOp::Kind as_unaryop() const { return static_cast<ast::UnaryOp::Kind>(opcode); }
+			inline ast::BinOp::Kind as_binop() const { return static_cast<ast::BinOp::Kind>(opcode); }
+
+		private:
+			int opcode;
+		};
+		static const std::unordered_map<TokenType, OpInfo> preop_info_map{
+			{ Scope,        OpInfo{ 14, OpInfo::RIGHT, ast::UnaryOp::GlobalAccess } },
+			{ PlusPlus,     OpInfo{ 12, OpInfo::RIGHT, ast::UnaryOp::PreIncrement } },
+			{ MinusMinus,   OpInfo{ 12, OpInfo::RIGHT, ast::UnaryOp::PreDecrement } },
+			{ Plus,         OpInfo{ 12, OpInfo::RIGHT, ast::UnaryOp::Positive } },
+			{ Minus,        OpInfo{ 12, OpInfo::RIGHT, ast::UnaryOp::Negative } },
+			{ Not,          OpInfo{ 12, OpInfo::RIGHT, ast::UnaryOp::Not } },
+			{ BitNot,       OpInfo{ 12, OpInfo::RIGHT, ast::UnaryOp::BitNot } },
+			{ Star,         OpInfo{ 12, OpInfo::RIGHT, ast::UnaryOp::Deref } },
+			{ BitAnd,       OpInfo{ 12, OpInfo::RIGHT, ast::UnaryOp::Address } },
+		};
+		static const std::unordered_map<TokenType, OpInfo> postop_info_map{
+			{ PlusPlus,     OpInfo{ 13, OpInfo::LEFT, ast::UnaryOp::PostIncrement } },
+			{ MinusMinus,   OpInfo{ 13, OpInfo::LEFT, ast::UnaryOp::PostDecrement } },
+		};
+		static const std::unordered_map<TokenType, OpInfo> binop_info_map{
+			{ Scope,		OpInfo{ 14, OpInfo::LEFT, ast::BinOp::Scope } },
+			{ Dot,			OpInfo{ 13, OpInfo::LEFT, ast::BinOp::MemberAccess } },
+			{ Star,			OpInfo{ 11, OpInfo::LEFT, ast::BinOp::Mul } },
+			{ Slash,		OpInfo{ 11, OpInfo::LEFT, ast::BinOp::Div } },
+			{ Percent,		OpInfo{ 11, OpInfo::LEFT, ast::BinOp::Mod } },
+			{ Plus,			OpInfo{ 10, OpInfo::LEFT, ast::BinOp::Sum } },
+			{ Minus,		OpInfo{ 10, OpInfo::LEFT, ast::BinOp::Sub } },
+			{ Shl,			OpInfo{ 9, OpInfo::LEFT, ast::BinOp::Shl } },
+			{ Shr,			OpInfo{ 9, OpInfo::LEFT, ast::BinOp::Shr } },
+			{ Greater,		OpInfo{ 8, OpInfo::LEFT, ast::BinOp::Greater } },
+			{ Lesser,		OpInfo{ 8, OpInfo::LEFT, ast::BinOp::Lesser } },
+			{ GreaterEq,	OpInfo{ 8, OpInfo::LEFT, ast::BinOp::GreaterEq } },
+			{ LesserEq,		OpInfo{ 8, OpInfo::LEFT, ast::BinOp::LesserEq } },
+			{ Eq,			OpInfo{ 7, OpInfo::LEFT, ast::BinOp::Eq } },
+			{ NotEq,		OpInfo{ 7, OpInfo::LEFT, ast::BinOp::NotEq } },
+			{ BitAnd,		OpInfo{ 6, OpInfo::LEFT, ast::BinOp::BitAnd } },
+			{ Caret,		OpInfo{ 5, OpInfo::LEFT, ast::BinOp::BitXOr } },
+			{ BitOr,		OpInfo{ 4, OpInfo::LEFT, ast::BinOp::BitOr } },
+			{ LogicAnd,		OpInfo{ 3, OpInfo::LEFT, ast::BinOp::LogicAnd } },
+			{ LogicOr,		OpInfo{ 2, OpInfo::LEFT, ast::BinOp::LogicOr } },
+			{ Assign,		OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::Assign } },
+			{ PlusAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::PlusAssign } },
+			{ MinusAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::MinusAssign } },
+			{ MulAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::MulAssign } },
+			{ DivAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::DivAssign } },
+			{ ModAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::ModAssign } },
+			{ AndAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::AndAssign } },
+			{ OrAssign,		OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::OrAssign } },
+			{ XorAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::XorAssign } },
+			{ ShlAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::ShlAssign } },
+			{ ShrAssign,	OpInfo{ 1, OpInfo::RIGHT, ast::BinOp::ShrAssign } }
+		};
+
+        inline bool is_preop(TokenType ty)	{ return preop_info_map.find(ty) != preop_info_map.end(); }
+		inline bool is_postop(TokenType ty) { return postop_info_map.find(ty) != postop_info_map.end(); }
+		inline bool is_binop(TokenType ty)	{ return binop_info_map.find(ty) != binop_info_map.end(); }        
+
+        /* Construct the expropriate AST UnaryOp node for the token's type. */
+        inline ast::expr_ptr make_preop(const Token& tok, ast::expr_ptr expr) {
+			if (tok.type == Plus) { return expr; } // Optimize away the positive unary operator node
+			return std::make_unique<ast::UnaryOp>(std::move(expr), preop_info_map.at(tok.type).as_unaryop());
         }
-        constexpr bool is_postop(TokenType ty) {
-            return ty == PlusPlus || ty == MinusMinus;
-        }
-        constexpr bool is_binop(TokenType ty) {
-            return ty == Scope || ty == Dot     ||
-                ty == Plus     || ty == Minus   ||
-                ty == Star     || ty == Slash   || ty == Percent ||
-                ty == LogicAnd || ty == LogicOr ||
-                ty == BitAnd   || ty == BitOr   || ty == Caret ||
-                ty == Shl      || ty == Shr;
-        }        
-
-        struct OpInfo {
-            unsigned int prec;
-            enum { LEFT, RIGHT } assoc;
-        };
-        static const std::unordered_map<TokenType, OpInfo> preop_info_map{
-            { Scope,        OpInfo{ 12, OpInfo::RIGHT } },
-            { PlusPlus,     OpInfo{ 9, OpInfo::RIGHT } },
-            { PlusPlus,     OpInfo{ 9, OpInfo::RIGHT } },
-            { MinusMinus,   OpInfo{ 9, OpInfo::RIGHT } },
-            { Plus,         OpInfo{ 9, OpInfo::RIGHT } },
-            { Minus,        OpInfo{ 9, OpInfo::RIGHT } },
-            { Not,          OpInfo{ 9, OpInfo::RIGHT } },
-            { BitNot,       OpInfo{ 9, OpInfo::RIGHT } },
-            { Star,         OpInfo{ 9, OpInfo::RIGHT } },
-            { BitAnd,       OpInfo{ 9, OpInfo::RIGHT } },
-        };
-        static const std::unordered_map<TokenType, OpInfo> postop_info_map{
-            { PlusPlus,     OpInfo{ 10, OpInfo::LEFT } },
-            { MinusMinus,   OpInfo{ 10, OpInfo::LEFT } },
-        };
-        static const std::unordered_map<TokenType, OpInfo> binop_info_map{
-            { Dot,      OpInfo{ 10, OpInfo::LEFT } },
-            { Star,     OpInfo{ 8, OpInfo::LEFT } },
-            { Slash,    OpInfo{ 8, OpInfo::LEFT } },
-            { Percent,  OpInfo{ 8, OpInfo::LEFT } },
-            { Plus,     OpInfo{ 7, OpInfo::LEFT } },
-            { Minus,    OpInfo{ 7, OpInfo::LEFT } },
-            { Shl,      OpInfo{ 6, OpInfo::LEFT } },
-            { Shr,      OpInfo{ 6, OpInfo::LEFT } },
-            { BitAnd,   OpInfo{ 5, OpInfo::LEFT } },
-            { Caret,    OpInfo{ 4, OpInfo::LEFT } },
-            { BitOr,    OpInfo{ 3, OpInfo::LEFT } },
-            { LogicAnd, OpInfo{ 2, OpInfo::LEFT } },
-            { LogicOr,  OpInfo{ 1, OpInfo::LEFT } },
-        };
-
-        /* Construct the expropriate operator AST node for the token's type.
-        Emits an error message and begins recovery if the token isn't a valid operator.
-        We use a full token instead of a type to get more accurate error messages. */
-        unique<ast::Expr> make_preop(const Token& tok, unique<ast::Expr> atom) {
-
-#define SCAR_MATCH_TYPE_OPERATOR_CASE(tok_ty, ast_op) \
-    case tok_ty: return std::make_unique<ast_op>(std::move(atom));
-
-            switch (tok.type)
-            {
-                SCAR_MATCH_TYPE_OPERATOR_CASE(PlusPlus, ast::ExprPreIncrement);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(MinusMinus, ast::ExprPreDecrement);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Minus, ast::ExprNegative);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Not, ast::ExprNot);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(BitNot, ast::ExprBitNot);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Star, ast::ExprDeref);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(BitAnd, ast::ExprAddress);
-            case Plus:
-                // There's no reason to wrap an expression
-                // if it wouldn't be modified either way
-                return atom;
-            default:
-                error_and_throw(tok);
-                return nullptr;
-            }
-#undef SCAR_MATCH_TYPE_OPERATOR_CASE
-        }
-
-        /* Construct the expropriate operator AST node for the token's type.
-        Emits an error message and begins recovery if the token isn't a valid operator.
-        We use a full token instead of a type to get more accurate error messages. */
-        unique<ast::Expr> make_postop(const Token& tok, unique<ast::Expr> atom) {
-
-#define SCAR_MATCH_TYPE_OPERATOR_CASE(tok_ty, ast_op) \
-    case tok_ty: return std::make_unique<ast_op>(std::move(atom));
-
-            switch (tok.type)
-            {
-                SCAR_MATCH_TYPE_OPERATOR_CASE(PlusPlus, ast::ExprPostIncrement);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(MinusMinus, ast::ExprPostDecrement);
-            default:
-                error_and_throw(tok);
-                return nullptr;
-            }
-#undef SCAR_MATCH_TYPE_OPERATOR_CASE
-        }
-
-        /* Construct the expropriate operator AST node for the token's type.
-        Emits an error message and begins recovery if the token isn't a valid operator.
-        We use a full token instead of a type to get more accurate error messages. */
-        unique<ast::Expr> make_binop(const Token& tok, unique<ast::Expr> lhs, unique<ast::Expr> rhs) {
-
-#define SCAR_MATCH_TYPE_OPERATOR_CASE(tok_ty, ast_op) \
-    case tok_ty: return std::make_unique<ast_op>(std::move(lhs), std::move(rhs));
-
-            switch (tok.type)
-            {
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Dot, ast::ExprMemberAccess);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Plus, ast::ExprSum);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Minus, ast::ExprSub);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Star, ast::ExprMul);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Slash, ast::ExprDiv);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Percent, ast::ExprMod);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(LogicAnd, ast::ExprLogicAnd);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(LogicOr, ast::ExprLogicOr);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(BitAnd, ast::ExprBitAnd);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(BitOr, ast::ExprBitOr);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Caret, ast::ExprBitXOr);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Shl, ast::ExprShl);
-                SCAR_MATCH_TYPE_OPERATOR_CASE(Shr, ast::ExprShr);
-            default:
-                error_and_throw(tok);
-                return nullptr;
-            }
-#undef SCAR_MATCH_TYPE_OPERATOR_CASE
+		/* Construct the expropriate AST UnaryOp node for the token's type. */
+		inline ast::expr_ptr make_postop(const Token& tok, ast::expr_ptr expr) {
+			return std::make_unique<ast::UnaryOp>(std::move(expr), postop_info_map.at(tok.type).as_unaryop());
+		}
+		/* Construct the expropriate AST BinOp node for the token's type. */
+		inline ast::expr_ptr make_binop(const Token& tok, ast::expr_ptr lhs, ast::expr_ptr rhs) {
+			return std::make_unique<ast::BinOp>(std::move(lhs), std::move(rhs), binop_info_map.at(tok.type).as_binop());
         }
 
     }
 
-    unique<ast::Expr> Parser::expr(unsigned int prec) {
+    ast::expr_ptr Parser::expr(unsigned int prec) {
         // Parse left side of the expression
-        unique<ast::Expr> lhs = expr_atom(prec);
+        ast::expr_ptr lhs = expr_atom(prec);
 
         while (op::is_binop(tok.type)) {
             // Find the corresponding OpInfo.
@@ -505,7 +470,7 @@ namespace scar {
 
             // Parse right side of the expression
             // If the operator was left associative, increase the precedence
-            unique<ast::Expr> rhs = expr(
+            ast::expr_ptr rhs = expr(
                 (info.assoc == op::OpInfo::LEFT) ? info.prec + 1 : info.prec);
 
             // Save the full expression to the left side,
@@ -516,8 +481,8 @@ namespace scar {
         return lhs;
     }
 
-    unique<ast::Expr> Parser::expr_atom(unsigned int prec) {
-        unique<ast::Expr> atom;
+    ast::expr_ptr Parser::expr_atom(unsigned int prec) {
+        ast::expr_ptr atom;
 
         // Parse a prefix unary operator
         if (op::is_preop(tok.type)) {
@@ -551,31 +516,17 @@ namespace scar {
             break;
 
         case LitInteger: // FIXME: separate int types
-            atom = std::make_unique<ast::I64Expr>(tok.val_i);
+            atom = std::make_unique<ast::I32Expr>(tok.val_i);
             bump();
             break;
 
         case LitFloat: // FIXME: separate float types
-            atom = std::make_unique<ast::F64Expr>(tok.val_f);
+            atom = std::make_unique<ast::F32Expr>(tok.val_f);
             bump();
             break;
 
-        default:
-            if (match(Scope) || match(Ident)) {
-                auto id_path = path();
-
-                // A '(' after an identifier is assumed to be a function call
-                if (match(Lparen)) {
-                    auto args = arg_list();
-                    atom = std::make_unique<ast::FunCall>(std::move(id_path), std::move(args));
-                }
-                else {
-                    atom = std::make_unique<ast::VarExpr>(id_path.back()); // FIXME: handle full paths
-                }
-            }
-            else {
-                failed_expect();
-            }
+        default: // FIXME: separate variables, structs, namespaces
+			atom = std::make_unique<ast::VarExpr>(expect(Ident).val_s);
             break;
         }
 
@@ -609,49 +560,49 @@ namespace scar {
         {
         case Str:
             bump();
-            return std::make_unique<ast::StrType>();
+            return std::make_unique<ast::Type>(ast::Type::StrType);
         case Char:
             bump();
-            return std::make_unique<ast::CharType>();
+            return std::make_unique<ast::Type>(ast::Type::CharType);
         case Bool:
             bump();
-            return std::make_unique<ast::BoolType>();
+            return std::make_unique<ast::Type>(ast::Type::BoolType);
 
         case I8:
             bump();
-            return std::make_unique<ast::I8Type>();
+            return std::make_unique<ast::Type>(ast::Type::I8Type);
         case I16:
             bump();
-            return std::make_unique<ast::I16Type>();
+            return std::make_unique<ast::Type>(ast::Type::I16Type);
         case I32:
             bump();
-            return std::make_unique<ast::I32Type>();
+            return std::make_unique<ast::Type>(ast::Type::I32Type);
         case I64:
             bump();
-            return std::make_unique<ast::I64Type>();
+            return std::make_unique<ast::Type>(ast::Type::I64Type);
 
         case U8:
             bump();
-            return std::make_unique<ast::I8Type>();
+            return std::make_unique<ast::Type>(ast::Type::U8Type);
         case U16:
             bump();
-            return std::make_unique<ast::I16Type>();
-        case U32:
+			return std::make_unique<ast::Type>(ast::Type::U16Type);
+		case U32:
             bump();
-            return std::make_unique<ast::I32Type>();
+            return std::make_unique<ast::Type>(ast::Type::U32Type);
         case U64:
             bump();
-            return std::make_unique<ast::I64Type>();
+            return std::make_unique<ast::Type>(ast::Type::U64Type);
 
         case F32:
             bump();
-            return std::make_unique<ast::F32Type>();
+            return std::make_unique<ast::Type>(ast::Type::F32Type);
         case F64:
             bump();
-            return std::make_unique<ast::F64Type>();
+            return std::make_unique<ast::Type>(ast::Type::F64Type);
 
         case Ident:
-            return std::make_unique<ast::CustomType>(expect(Ident).val_s);
+            return std::make_unique<ast::Type>(expect(Ident).val_s);
 
         default:
             error_and_throw(tok);

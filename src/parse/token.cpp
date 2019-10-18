@@ -143,7 +143,7 @@ namespace scar {
             case ShrAssign:     return "'=>>'";
 
             default:
-                Session::get().logger().bug(format("token.cpp: missing string for type #{}", (int)ty));
+                Session::get().logger().bug(FMT("token.cpp: missing string for type #{}", (int)ty));
                 return "unknown";
             }
         }

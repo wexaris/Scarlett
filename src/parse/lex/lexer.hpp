@@ -19,7 +19,7 @@ namespace scar {
         void skip_ws_and_comments();
 
         /* Main tokenization function. */
-        Token tokenize_next();
+		Token next_token();
 
         Token lex_number();
 
@@ -43,7 +43,13 @@ namespace scar {
     public:
         Lexer(std::string_view in) : reader(in) {}
 
-        Token next_token();
+		TokenStream lex() {
+			TokenStream ts;
+			do {
+				ts.push_back(next_token());
+			} while (!ts.back().is_eof()); // Check if last token was EOF
+			return ts;
+		}
 
         /* Returns the sourcefile this Lexer is tokenizing. */
         inline const source::file_ptr_t sf() const  { return reader.get_sf(); }

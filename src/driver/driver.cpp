@@ -1,6 +1,8 @@
 #include "driver.hpp"
 #include "parse/parser.hpp"
 #include "ast/visitor/llvm_visitor.hpp"
+#include "ast/visitor/llvm_opt_visitor.hpp"
+#include "util/error.hpp"
 
 namespace scar {
 
@@ -19,19 +21,35 @@ namespace scar {
     //////////////////////////////////////////////////////////////////////////
 
     void Driver::run() {
-        Parser parser = Parser(Session::get().args().in[0]);
+		// The logger is often used to track errors across the
+		// whole compilation process, so it is called quite often.
+		// To make this less verbose, we store a reference.
+#define CHECK_LOGGER_THROW(e) \
+	Session::get().logger().emit_delayed(); \
+		if (Session::get().logger().had_error()) { \
+			Session::get().logger().finish(); \
+			throw err::FatalError(e); \
+		}
 
+		// Parse a token stream of the input file
+		Lexer lexer = Lexer(Session::get().args().in[0]);
+		auto tokens = lexer.lex();
+        Parser parser = Parser(tokens);
         auto ast = parser.parse();
+		CHECK_LOGGER_THROW(err_codes::ERR_FAILED_PARSE);
 
-        if (Session::get().logger().print_error_count()) {
-            return;
-        }
+		// Generate LLVM IR
+        auto codegen = ast::LLVMVisitor(Session::get().logger());
+		ast.accept(codegen);
+		CHECK_LOGGER_THROW(err_codes::ERR_FAILED_CODEGEN);
 
-        auto visitor = ast::LLVMVisitor(Session::get().symbols());
+		// Optimize the LLVM IR
+		auto opt = ast::LLVMOptimizeVisitor(codegen.module);
+		ast.accept(opt);
+		CHECK_LOGGER_THROW(err_codes::ERR_FAILED_OPTIMIZE);
 
-        ast.accept(visitor);
-
-        visitor.module.print(llvm::errs(), nullptr);
+		// Emit the LLVM IR
+		codegen.module->print(llvm::errs(), nullptr);
     }
 
 }

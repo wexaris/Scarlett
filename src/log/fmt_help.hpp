@@ -1,7 +1,9 @@
 #pragma once
 #include "fmt/format.h"
 #include "fmt/core.h"
+#include <vector>
 #include <string>
+#include <sstream>
 
 namespace scar {
     namespace fmt_help {
@@ -29,7 +31,7 @@ namespace scar {
 
     namespace col {
 
-        using color_t = std::string;
+        using color_t = std::string_view;
 
         namespace ansi {
             // Formatting
@@ -63,8 +65,13 @@ namespace scar {
             static const color_t bg_white = "\033[47m";
         }
 
-        static inline std::string with_color(color_t color, std::string_view txt) {
-            return color + std::string(txt) + ansi::reset.data();
+        static inline std::string with_color(std::vector<color_t> colors, std::string_view txt) {
+            std::ostringstream ss;
+            for (auto col : colors) {
+                ss << col;
+            }
+            ss << txt << ansi::reset.data();
+            return ss.str();
         }
 
     }
