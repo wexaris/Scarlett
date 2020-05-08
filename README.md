@@ -1,22 +1,6 @@
-# Scarlet
+# Scarlett
 
 This is the source code repository for the work-in-progress _scar_ compiler.
-
-The project is meant to largely canibalize the _ivy_ compiler, since it was made 
-as part of a school project and many of it's parts are rushed, incomplete or badly designed.
-This project aims to rework and expand upon the ideas and experience accumulated in the
-process of working on the _ivy_ project.
-
-## Usage
-
-Using the compiler is very simple. All you need to do is pass it some input files.
-Other parameters the compiler recognises can be found in the help menu `-h`.
-
-```
-scar [options] <input>
-```
-> Some of the options currently have no effect since the compiler does not yet
-produce machine code.
 
 
 ## Building from Source
@@ -26,7 +10,6 @@ produce machine code.
     * `make`
     * `cmake`
     * `g++`
-    * `fmt`
     * `llvm`
 
 2. Start off by cloning the source code from this repository:

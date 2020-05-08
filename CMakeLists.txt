@@ -1,99 +1,54 @@
-cmake_minimum_required( VERSION 3.6 )
-project( scarlet LANGUAGES CXX VERSION 0.0.1 )
+cmake_minimum_required(VERSION 3.6)
+project(scarlett)
 
-####################
-####################
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# set default build type if none was specified
-set( DEFAULT_BUILD_TYPE Release )
-if( NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES )
-    message( STATUS "Set build type to '${DEFAULT_BUILD_TYPE}' as none was specified." )
-  
-    set( CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
-        STRING "Choose build type" FORCE )
+set(CMAKE_CXX_STANDARD 17)
 
-    # list possible build types for cmake-gui
-    set_property( CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-        "Debug" "Release" "MinSizeRel" "RelWithDebInfo" )
-endif()
+### External
+add_subdirectory(external)
 
-if( CMAKE_BUILD_TYPE )
-    message( STATUS "Build: ${CMAKE_BUILD_TYPE}" )
-endif()
+find_package(LLVM REQUIRED CONFIG)
+llvm_map_components_to_libnames(LLVM_LIBS support core irreader passes)
+message(STATUS "LLVM version: ${LLVM_PACKAGE_VERSION}")
+message(STATUS "LLVM config directory: ${LLVM_DIR}")
 
-# set output directories
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
-set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
-set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
-
-
-####################
-####################
-
-# set verion to C++17
-set( CMAKE_CXX_STANDARD 17 )
-set( CMAKE_CXX_STANDARD_REQUIRED ON )
-set( CMAKE_CXX_EXTENSIONS OFF )
-message( STATUS "CXX verison: ${CMAKE_CXX_STANDARD}" )
-
-# GNUCXX compile options
-if( CMAKE_COMPILER_IS_GNUCXX )
-    message( STATUS "Found GNUCXX compiler" )
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -g3 -O0 -pedantic -Wall -Wextra -Werror")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-elseif ( MSVC )
-    message( STATUS "Found MSVC compiler" )
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-endif()
-
-####################
-####################
-
-find_package( fmt REQUIRED CONFIG )
-
-message( STATUS "FMT version: ${fmt_VERSION}" )
-message( STATUS "FMT config location: ${fmt_DIR}" )
-
-####################
-####################
-
-find_package( LLVM REQUIRED CONFIG )
-
-message( STATUS "LLVM version: ${LLVM_PACKAGE_VERSION}" )
-message( STATUS "LLVM config location: ${LLVM_DIR}" )
-
-include_directories( ${LLVM_INCLUDE_DIRS} )
-add_definitions( ${LLVM_DEFINITIONS} )
-
-llvm_map_components_to_libnames( llvm_libs support core irreader passes )
-
-####################
-####################
-
-include_directories(
-    "src/"
-)
-
-set( SRC_FILES
+### Scarlett
+set(SCAR_SRC
     src/main.cpp
-    src/ast/ast.cpp
-    src/ast/visitor/llvm_opt_visitor.cpp
-    src/ast/visitor/llvm_visitor.cpp
-    src/cmd_args/args.cpp
-    src/driver/driver.cpp
-    src/files/source.cpp
-    src/log/emitter.cpp
-    src/log/log_manager.cpp
-    src/parse/lex/codepoint.cpp
-    src/parse/lex/lexer.cpp
-    src/parse/lex/utf_reader.cpp
-    src/parse/parser.cpp
-    src/parse/token.cpp
-    src/symbols/interner.cpp
-    src/util/error.cpp
+    src/Core/Driver.cpp
+    src/Core/Log.cpp
+    src/Parse/Parser.cpp
+    src/Parse/AST/LLVMVisitor.cpp
+    src/Parse/AST/TypeCheckVisitor.cpp
+    src/Parse/AST/PrintVisitor.cpp
+    src/Parse/Lex/Lexer.cpp
+    src/Parse/Lex/UTFReader.cpp
+    src/Parse/Lex/SourceFile.cpp
+    src/Parse/Lex/Codepoint.cpp
+    src/Parse/Interner.cpp
 )
 
-add_executable( scar ${SRC_FILES} )
+set(SCAR_PCH src/scarpch.hpp)
 
-target_link_libraries( scar fmt::fmt ${llvm_libs} )
+add_executable(scar ${SCAR_SRC})
+target_precompile_headers(scar PRIVATE ${SCAR_PCH})
+
+target_link_libraries(scar PUBLIC ${LLVM_LIBS} spdlog fmt)
+target_compile_definitions(scar PUBLIC ${LLVM_DEFINITIONS})
+target_include_directories(scar PUBLIC src/ SYSTEM ${LLVM_INCLUDE_DIRS})
+
+target_compile_options(scar PRIVATE
+    $<$<CONFIG:DEBUG>:   #DEBUG
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+            -Wall -pedantic -O0 -g>
+        $<$<CXX_COMPILER_ID:MSVC>:
+            /W3 /ZI /RTC1 /Od>>
+    $<$<CONFIG:RELEASE>: #RELEASE
+        $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+            -O2 -s -DNDEBUG>
+        $<$<CXX_COMPILER_ID:MSVC>:
+            /Zi /GL /O2>>
+)

@@ -8,7 +8,7 @@ BUILD_DIR := $(shell echo $(BUILD_TYPE) | tr A-Z a-z)
 
 THREAD_NUM ?= 4
 
-.PHONY: all build debug release relwithdebinfo minsizerel clean
+.PHONY: all build debug release
 
 all: release
 
@@ -24,14 +24,6 @@ debug:
 release:
 	$(MAKE) build BUILD_TYPE=Release
 
-relwithdebinfo:
-	$(MAKE) build BUILD_TYPE=RelWithDebInfo
-
-minsizerel:
-	$(MAKE) build BUILD_TYPE=MinSizeRel
-
 clean:
 	rm -rf build/debug bin/debug
 	rm -rf build/release bin/release
-	rm -rf build/minsizerel bin/minsizerel
-	rm -rf build/relwithdebinfo bin/relwithdebinfo

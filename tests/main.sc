@@ -1,73 +1,21 @@
-// This is a file for testing the compiler.
-// This is not meant to be a functional 'main' file.
-// It is used to see wether multiple compiler parts
-// work together as they should, including the parser, lexer,
-// error handling system etc.
 
-//::foo::bar::val + 4e1 / 0.666e4 * 1 + 0.9898;
+// This is a line comment
 
-fun main(b: f32, s: bool) -> f32 {
-    b = 1.0;
-	var x: f32 = 42.0;
-	return x;
+/* This is a block comment */
+
+func test(foo f64) -> f64;
+
+func main(x f64) -> f64 {
+    ;
+    var y: f64 = 1.0;
+    loop {
+        if (x + y != 0.0) {
+            break;
+        }
+        else {
+            return test(x - 3.0);
+        }
+    }
+    test(666.0);
+    return 3.0;
 }
-
-//main(~true, false);
-
-/*mod main;
-
-pub static var a_global_var: 'static &[*i32];
-
-mod sub {
-    pub struct Pos<'a> {
-        pub x: 'a i32;
-        pub y: 'a i32;
-    }
-
-    pub struct Int(i32, );
-
-    pub union FloatInt<'c> {
-        f: 'c f32;
-        i: 'c i32;
-    }
-
-    impl Pos {
-        pub fun make(x: i32, y: i32) -> Pos {
-            return Pos { x: x, y: y };
-        }
-    }
-
-    pub enum Dir<'b> {
-        UP,
-        DOWN,
-        LEFT,
-        RIGHT,
-        SEQ = useless::ret_this(4),
-    }
-
-    pub trait Raw {
-        fun raw(&self) -> (i32, i32);
-    }
-
-    impl Raw for Pos {
-        pub fun raw(&self) -> (i32, i32) {
-            return (x, y);
-        }
-    }
-}*/
-
-// use 'sub' with scope
-// var: sub::Pos<'static>
-
-/*use sub;*/                        // scope to module 'sub' implicity from now on
-// no need for scope
-// var: Pos<'static>
-
-/*fun main(args: &[String]) -> isize
-{
-    var pos: Pos<'static> = Pos::make(1, 1);
-
-    print!("Hello, World!");
-
-    return 0;
-}*/
