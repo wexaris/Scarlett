@@ -1,13 +1,15 @@
 #include "scarpch.hpp"
 #include "Parse/Lex/Lexer.hpp"
 
+#define SPAN_ERROR(...) SCAR_ERROR("{}: {}", GetSpan(), FMT(__VA_ARGS__))
+
 namespace scar {
 
     ///////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
     // MISCELANEOUS
     
-    static std::unordered_map<std::string_view, Token::Type> KeywordMap = {
+    static std::unordered_map<std::string_view, Token::TokenType> KeywordMap = {
         { "func",     Token::Func },
         { "if",       Token::If },
         { "else",     Token::Else },
@@ -50,15 +52,6 @@ namespace scar {
         m_Reader.Bump(n);
     }
 
-    void Lexer::Error(std::string_view msg) {
-        SCAR_ERROR("{}: {}", GetSpan(), msg);
-        m_ErrorCount++;
-    }
-
-    void Lexer::ThrowError(std::string_view msg) {
-        throw ParseError(ErrorCode::Unknown, [&]() { Error(msg); });
-    }
-
     TokenStream Lexer::Lex() {
         TokenStream tokenStream;
         do {
@@ -68,6 +61,14 @@ namespace scar {
     }
 
     Token Lexer::GetNextToken() {
+        try { return GetNextTokenInner(); }
+        catch (CompilerError& e) {
+            e.OnCatch();
+            return Token(GetSpan());
+        }
+    }
+
+    Token Lexer::GetNextTokenInner() {
         SkipWhitespaceAndComments();
         m_TokenStartPosition = GetPosition();
 
@@ -87,7 +88,7 @@ namespace scar {
             } while (range::IsIdentBody(GetCurr()));
 
             std::string_view ident = m_Reader.GetSourceFile()->GetString(m_TokenStartPosition.Index, GetPosition().Index - m_TokenStartPosition.Index);
-            auto& iter = KeywordMap.find(ident);
+            auto iter = KeywordMap.find(ident);
             if (iter != KeywordMap.end()) {
                 return Token(iter->second, GetSpan());
             }
@@ -185,8 +186,7 @@ namespace scar {
 
         default:
             Bump();
-            Error(FMT("unrecognized symbol '{}'", GetString()));
-            return Token(GetSpan());
+            SPAN_ERROR("unrecognized symbol '{}'", GetString());
         }
     }
 
@@ -208,7 +208,7 @@ namespace scar {
                 while (!(GetCurr() == '*' && GetNext() == '/')) {
                     // Don't allow unclosed comments at end of file
                     if (GetCurr().IsEOF()) {
-                        ThrowError("unexpected end of file in comment");
+                        SPAN_ERROR("unexpected end of file in comment");
                     }
                     Bump();
                 }
@@ -310,7 +310,7 @@ namespace scar {
                 // Make sure there's a number after the prefix
                 if (!GetCurr().IsBin()) {
                     Bump();
-                    ThrowError("binary number missing value");
+                    SPAN_ERROR("binary number missing value");
                 }
             }
             else if (GetNext() == 'o') {
@@ -319,7 +319,7 @@ namespace scar {
                 // Make sure there's a number after the prefix
                 if (!GetCurr().IsOct()) {
                     Bump();
-                    ThrowError("octal number missing value");
+                    SPAN_ERROR("octal number missing value");
                 }
             }
             else if (GetNext() == 'x') {
@@ -328,7 +328,7 @@ namespace scar {
                 // Make sure there's a number after the prefix
                 if (!GetCurr().IsHex()) {
                     Bump();
-                    ThrowError("hexadecimal number missing value");
+                    SPAN_ERROR("hexadecimal number missing value");
                 }
             }
         }
@@ -344,8 +344,7 @@ namespace scar {
         ReadExponent();
 
         if (base != 10) {
-            Error("only decimal numbers support fractions and exponents");
-            return Token(GetSpan());
+            SPAN_ERROR("only decimal numbers support fractions and exponents");
         }
 
         return Token(Token::LitFloat, Token::F64, StringToFloat(GetString()), GetSpan());
@@ -379,7 +378,7 @@ namespace scar {
                 ReadDigits(10);
             }
             else {
-                ThrowError("exponent requires a value");
+                SPAN_ERROR("exponent requires a value");
             }
         }
     }
@@ -413,8 +412,8 @@ namespace scar {
         }
 
         if (!range::IsChar(value)) {
-            Error(FMT("invalid numeric escape : '{}'", GetString()));
             value = 0xFFFD;
+            SPAN_ERROR("invalid numeric escape : '{}'", GetString());
         }
 
         return Codepoint(value);

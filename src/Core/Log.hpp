@@ -1,4 +1,7 @@
 #pragma once
+#include "Core/Session.hpp"
+#include "Core/Error.hpp"
+
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h>
@@ -19,8 +22,8 @@ namespace scar {
 
 #define FMT(...) ::fmt::format(__VA_ARGS__)
 
-#define SCAR_TRACE(...) ::scar::Log::GetLogger()->trace(__VA_ARGS__)
-#define SCAR_INFO(...)  ::scar::Log::GetLogger()->info(__VA_ARGS__)
-#define SCAR_WARN(...)  ::scar::Log::GetLogger()->warn(__VA_ARGS__)
-#define SCAR_ERROR(...) ::scar::Log::GetLogger()->error(__VA_ARGS__)
-#define SCAR_CRITICAL(...) ::scar::Log::GetLogger()->critical(__VA_ARGS__);
+#define SCAR_TRACE(...) ::scar::Session::Trace(FMT(__VA_ARGS__))
+#define SCAR_INFO(...)  ::scar::Session::Info(FMT(__VA_ARGS__))
+#define SCAR_WARN(...)  ::scar::Session::Warn(FMT(__VA_ARGS__))
+#define SCAR_ERROR(...) throw ::scar::CompilerError(FMT(__VA_ARGS__));
+#define SCAR_CRITICAL(...) { SCAR_ERROR(__VA_ARGS__); throw std::runtime_error(FMT(__VA_ARGS__)); }

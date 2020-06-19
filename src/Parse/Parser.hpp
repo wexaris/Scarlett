@@ -10,26 +10,21 @@ namespace scar {
 
         Ref<ast::Module> Parse();
 
-        unsigned int GetErrorCount() const { return m_ErrorCount; }
-
     private:
         TokenStream m_TokenStream;
         TokenStream::iterator m_Token;
-        unsigned int m_ErrorCount = 0;
 
         Parser(const Parser&) = delete;
         void operator=(const Parser&) = delete;
 
         void Bump();
-        Span GetSpanFrom(const TextPosition& start) const {
-            return Span(m_Token->GetSpan().File, start.Line, start.Col, start.Index, m_Token->GetSpan().Index - start.Index);
+        TextSpan GetSpanFrom(const TextPosition& start) const {
+            return TextSpan(m_Token->Span.File, start.Line, start.Col, start.Index, m_Token->Span.Index - start.Index);
         }
 
-        bool Match(const std::vector<Token::Type>& expected) const;
-        Token& Expect(const std::vector<Token::Type>& expected);
-        void Synchronize(const std::vector<Token::Type>& delims);
-
-        [[noreturn]] void ThrowError(std::string_view msg, const Span& span);
+        bool Match(const std::vector<Token::TokenType>& expected) const;
+        Token& Expect(const std::vector<Token::TokenType>& expected);
+        void Synchronize(const std::vector<Token::TokenType>& delims);
 
         // Type
         Ref<ast::Type> Type();

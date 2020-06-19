@@ -88,7 +88,7 @@ namespace scar {
             return Codepoint(outval);
         }
         else {
-            throw ParseError(ErrorCode::InvalidUTF8, [&]() { SCAR_ERROR("{}: invalid UTF-8; code is too long", Span(m_SourceFile, m_LastPosition, m_CurrentPosition)); });
+            SCAR_ERROR("{}: invalid UTF-8; code is too long", TextSpan(m_SourceFile, m_LastPosition, m_CurrentPosition));
         }
     }
 

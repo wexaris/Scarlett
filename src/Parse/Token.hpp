@@ -7,7 +7,7 @@ namespace scar {
 
     class Token {
     public:
-        enum Type : uint16_t {
+        enum TokenType : uint16_t {
             Invalid = 0,
 
             Ident,
@@ -97,52 +97,55 @@ namespace scar {
             EndOfFile
         };
 
-        Token(const Span& span)                          : m_Type(Invalid), m_Span(span) {}
-        Token(Type type, const Span& span)               : m_Type(type), m_Span(span) {}
-        Token(Type type, Type subType, uint64_t val, const Span& span) :
-            m_Type(type), m_Span(span), m_Value(std::in_place_index_t<0>{}, val), m_ValueType(subType) {}
-        Token(Type type, Type subType, double val, const Span& span)   :
-            m_Type(type), m_Span(span), m_Value(std::in_place_index_t<1>{}, val), m_ValueType(subType) {}
-        Token(Type type, std::string_view val, const Span& span) :
-            m_Type(type), m_Span(span), m_Value(std::in_place_index_t<2>{}, Interner::Intern(val)), m_ValueType(String) {}
+        const TokenType Type = Token::Invalid;
+        const TokenType ValueType = Token::Invalid;
+        const TextSpan Span;
 
-        Type GetType() const { return m_Type; }
-        Type GetValueType() const { return m_ValueType; }
-        const Span& GetSpan() const { return m_Span; }
-        TextPosition GetTextPos() const { return TextPosition(m_Span.Line, m_Span.Col, m_Span.Index); }
+        Token(const TextSpan& span) :
+            Type(Invalid), Span(span) {}
+        Token(TokenType type, const TextSpan& span) :
+            Type(type), Span(span) {}
+        Token(TokenType type, TokenType valType, uint64_t val, const TextSpan& span) :
+            Type(type), Span(span), m_Value(std::in_place_index_t<0>{}, val), ValueType(valType) {}
+        Token(TokenType type, TokenType valType, double val, const TextSpan& span) :
+            Type(type), Span(span), m_Value(std::in_place_index_t<1>{}, val), ValueType(valType) {}
+        Token(TokenType type, std::string_view val, const TextSpan& span) :
+            Type(type), Span(span), m_Value(std::in_place_index_t<2>{}, Interner::Intern(val)), ValueType(String) {}
+
+        TextPosition GetTextPos() const { return TextPosition(Span.Line, Span.Col, Span.Index); }
         uint64_t GetInt() const {
-            if (m_Type != LitInt) { SCAR_BUG("cannot get integer value from non-integer Token!"); }
+            if (Type != LitInt) 
+                SCAR_BUG("cannot get integer value from non-integer Token!");
             return std::get<0>(m_Value);
         }
         double GetFloat() const {
-            if (m_Type != LitFloat) { SCAR_BUG("cannot get float value from non-float Token!"); }
+            if (Type != LitFloat)
+                SCAR_BUG("cannot get float value from non-float Token!");
             return std::get<1>(m_Value);
         }
         Interner::StringID GetName() const {
-            if (m_Type != LitString && m_Type != Ident) { SCAR_BUG("cannot get StringID from non-string Token!"); }
+            if (Type != LitString && Type != Ident)
+                SCAR_BUG("cannot get StringID from non-string Token!");
             return std::get<2>(m_Value);
         }
         std::string_view GetString() const { return Interner::GetString(GetName()); }
 
-        bool IsEOF() const { return m_Type == Type::EndOfFile; }
-        bool IsValid() const { return m_Type != Type::Invalid; }
+        bool IsEOF() const { return Type == Token::EndOfFile; }
+        bool IsValid() const { return Type != Token::Invalid; }
 
         // Get the corresponding source code fragment
         std::string_view GetRaw() const {
-            return m_Span.File->GetString(m_Span.Index, m_Span.Length);
+            return Span.File->GetString(Span.Index, Span.Length);
         }
 
-        bool operator==(const Token::Type& type) const { return m_Type == type; }
-        bool operator!=(const Token::Type& type) const { return m_Type != type; }
+        bool operator==(const TokenType& type) const { return Type == type; }
+        bool operator!=(const TokenType& type) const { return Type != type; }
 
     private:
-        const Type m_Type = Type::Invalid;
-        const Span m_Span;
         const std::variant<uint64_t, double, Interner::StringID> m_Value;
-        const Type m_ValueType = Type::Invalid;
     };
 
-    static std::string_view AsString(Token::Type type) {
+    static std::string_view AsString(Token::TokenType type) {
         switch (type) {
         case Token::Invalid:   return "invalid";
 
@@ -232,10 +235,10 @@ namespace scar {
         }
     }
     static std::string AsString(const Token& token) {
-        return FMT("{}: {}", AsString(token.GetSpan()), AsString(token.GetType()));
+        return FMT("{}: {}", AsString(token.Span), AsString(token.Type));
     }
 
-    static std::ostream& operator<<(std::ostream& os, Token::Type tokenType) {
+    static std::ostream& operator<<(std::ostream& os, Token::TokenType tokenType) {
         return os << AsString(tokenType);
     }
     static std::ostream& operator<<(std::ostream& os, const Token& token) {

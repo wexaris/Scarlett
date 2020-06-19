@@ -2,7 +2,6 @@
 .vs/
 .vscode/
 build/
-src_old/
 
 # Files
 CMakeSettings.json

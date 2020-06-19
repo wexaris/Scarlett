@@ -19,6 +19,7 @@ message(STATUS "LLVM config directory: ${LLVM_DIR}")
 set(SCAR_SRC
     src/main.cpp
     src/Core/Driver.cpp
+    src/Core/Session.cpp
     src/Core/Log.cpp
     src/Parse/Parser.cpp
     src/Parse/AST/LLVMVisitor.cpp
@@ -43,9 +44,9 @@ target_include_directories(scar PUBLIC src/ SYSTEM ${LLVM_INCLUDE_DIRS})
 target_compile_options(scar PRIVATE
     $<$<CONFIG:DEBUG>:   #DEBUG
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-            -Wall -pedantic -O0 -g>
+            -Wall -pedantic -O0 -g -Wno-unused-function>
         $<$<CXX_COMPILER_ID:MSVC>:
-            /W3 /ZI /RTC1 /Od>>
+            /W3 /RTC1 /Od>>
     $<$<CONFIG:RELEASE>: #RELEASE
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
             -O2 -s -DNDEBUG>

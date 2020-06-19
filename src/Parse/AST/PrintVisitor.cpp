@@ -12,7 +12,7 @@ namespace scar {
         // TYPE
 
         void PrintVisitor::Visit(Type& node) {
-            PRINT_LEAF("Type {}", node.VarType);
+            PRINT_LEAF("Type {}", node.ValType);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -37,10 +37,10 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(FunctionPrototype& node) {
-            PRINT_BRANCH("FunctionPrototype {} \"{}\"({})", node.ReturnType->VarType, node.Name.GetString(), node.Name.StringID);
+            PRINT_BRANCH("FunctionPrototype {} \"{}\"({})", node.ReturnType->ValType, node.Name.GetString(), node.Name.StringID);
             m_IndentCount++;
             for (auto& arg : node.Args) {
-                PRINT_LEAF("Arg {} \"{}\"({})", arg.VarType->VarType, arg.Name.GetString(), arg.Name.StringID);
+                PRINT_LEAF("Arg {} \"{}\"({})", arg.VarType->ValType, arg.Name.GetString(), arg.Name.StringID);
             }
             m_IndentCount--;
         }
@@ -107,7 +107,7 @@ namespace scar {
         // EXPRESSIONS
 
         void PrintVisitor::Visit(FunctionCall& node) {
-            PRINT_BRANCH("FunctionCall {} \"{}\"({})", node.GetValueType(), node.Name.GetString(), node.Name.StringID);
+            PRINT_BRANCH("FunctionCall {} \"{}\"({})", node.ValueType, node.Name.GetString(), node.Name.StringID);
             m_IndentCount++;
             for (auto& arg : node.Args) {
                 arg->Accept(*this);
@@ -116,14 +116,14 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(Var& node) {
-            PRINT_BRANCH("Var {} \"{}\"({})", node.GetValueType(), node.Name.GetString(), node.Name.StringID);
+            PRINT_BRANCH("Var {} \"{}\"({})", node.ValueType, node.Name.GetString(), node.Name.StringID);
             m_IndentCount++;
             node.Assign->RHS->Accept(*this);
             m_IndentCount--;
         }
 
         void PrintVisitor::Visit(Variable& node) {
-            PRINT_LEAF("Variable {} \"{}\"({})", node.GetValueType(), node.Name.GetString(), node.Name.StringID);
+            PRINT_LEAF("Variable {} \"{}\"({})", node.ValueType, node.Name.GetString(), node.Name.StringID);
         }
 
         ///////////////////////////////////////////////////////////////////////

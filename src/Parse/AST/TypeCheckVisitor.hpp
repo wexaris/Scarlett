@@ -4,6 +4,8 @@
 namespace scar {
     namespace ast {
 
+        struct VisitorData;
+
         class TypeCheckVisitor : public Visitor {
         public:
             TypeCheckVisitor() = default;
@@ -34,11 +36,6 @@ namespace scar {
             void Visit(LiteralInteger& node) override;
             void Visit(LiteralFloat& node) override;
             void Visit(LiteralString& node) override;
-
-        private:
-            unsigned int m_ErrorCount = 0;
-
-            void Error(std::string_view msg, const Span& span);
         };
 
     }

@@ -66,7 +66,7 @@
         #define SCAR_FUNCSIG "unknown function"
     #endif
 
-    #define SCAR_BUG(...) SCAR_ERROR("{}: {}", SCAR_FUNCSIG, __VA_ARGS__); SCAR_DEBUGBREAK()
+    #define SCAR_BUG(...) { SCAR_ERROR("{}: {}", SCAR_FUNCSIG, FMT(__VA_ARGS__)); SCAR_DEBUGBREAK(); }
 #else
     #define SCAR_BUG(...)
 #endif

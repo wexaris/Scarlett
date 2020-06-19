@@ -1,15 +1,6 @@
 #pragma once
 #include "Parse/AST/AST.hpp"
 
-#pragma warning(push, 0)
-#pragma warning(disable:4996) // Deprecation
-#pragma warning(disable:4146) // Operator minus on unsigned type
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LegacyPassManager.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#pragma warning(pop)
-
 namespace scar {
     namespace ast {
 
@@ -17,7 +8,7 @@ namespace scar {
         public:
             LLVMVisitor();
 
-            void Print() const { m_Module->print(llvm::outs(), nullptr); }
+            void Print() const;
 
             void Visit(Type& node) override;
 
@@ -45,20 +36,6 @@ namespace scar {
             void Visit(LiteralInteger& node) override;
             void Visit(LiteralFloat& node) override;
             void Visit(LiteralString& node) override;
-
-        private:
-            llvm::LLVMContext m_Context;
-            llvm::IRBuilder<> m_Builder;
-            Scope<llvm::Module> m_Module;
-            Scope<llvm::legacy::FunctionPassManager> m_FunctionPassManager;
-
-            // Return values across codegen functions
-            llvm::Value* m_ReturnValue = nullptr;
-            llvm::Type* m_ReturnType = nullptr;
-
-            bool m_BlockReturned = false;
-
-            [[noreturn]] void ThrowError(std::string_view msg, const Span& span);
         };
 
     }

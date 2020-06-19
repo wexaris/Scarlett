@@ -1,5 +1,6 @@
 #include "scarpch.hpp"
 #include "Core/Driver.hpp"
+#include "Core/Session.hpp"
 #include "Parse/Parser.hpp"
 #include "Parse/AST/LLVMVisitor.hpp"
 #include "Parse/AST/TypeCheckVisitor.hpp"
@@ -7,68 +8,46 @@
 
 namespace scar {
 
-    Session* Session::s_Instance;
-
-    void Session::Create(int argc, const char* argv[]) {
-        s_Instance = new Session(argc, argv);
-    }
-
-    Session::Session(int argc, const char* argv[]) {
-        if (argc == 1) {
-            throw Terminate(ErrorCode::CommandLineError, [&]() { SCAR_ERROR("no input file specified!"); } );
-        }
-        else {
-            InputFile = argv[1];
-        }
-    }
-
-    bool Driver::m_Initialized        = false;
-    int Driver::m_ReturnState         = 0;
-    unsigned int Driver::m_ErrorCount = 0;
-
-    void Driver::Init(int argc, const char* argv[]) {
-        try {
-            Log::Init();
-            Session::Create(argc, argv);
-
-            m_Initialized = true;
-        }
-        catch (Terminate& e) {
-            e.OnCatch();
-            m_ReturnState = (int)e.Code;
-        }
+    void Driver::Init(const std::vector<const char*>& args) {
+        scar::Log::Init();
+        scar::Session::Init(args);
     }
 
     void Driver::Compile() {
-        if (m_ReturnState != 0) {
+        if (!Session::IsGood())
             return;
-        }
-
-        if (!m_Initialized) {
-            SCAR_BUG("Driver not initialized!");
-            return;
-        }
 
         try {
-            Parser parser(Session::Get().InputFile);
+            // TODO: Pass Session into these passes.
+            // Session should provide one consistent error logging system,
+            // as well as handle error counting, so we don't have to query
+            // every visitor and parse individually.
+            Parser parser(Session::GetInputFile());
             auto ast = parser.Parse();
 
             ast::TypeCheckVisitor typeCheck;
             ast->Accept(typeCheck);
 
-            ast::PrintVisitor print;
-            ast->Accept(print);
+            //ast::PrintVisitor print;
+            //ast->Accept(print);
 
-            if (!parser.GetErrorCount()) {
+            if (Session::IsGood()) {
                 ast::LLVMVisitor codegen;
                 ast->Accept(codegen);
                 codegen.Print();
             }
         }
-        catch (CompilerException& e) {
+        catch (CompilerError& e) {
             e.OnCatch();
-            m_ReturnState = (int)e.Code;
-            return;
+        }
+    }
+
+    void Driver::Exit() {
+        if (Session::IsGood()) {
+            SCAR_INFO("Compilation successful");
+        }
+        else {
+            SCAR_INFO("Compilation failed due to {} error{}", Session::GetErrorCount(), Session::GetErrorCount() > 1 ? "s" : "");
         }
     }
 

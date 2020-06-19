@@ -16,13 +16,9 @@ namespace scar {
         SourceFile* GetSourceFile()             { return m_Reader.GetSourceFile(); }
         const SourceFile* GetSourceFile() const { return m_Reader.GetSourceFile(); }
 
-        unsigned int GetErrorCount() const { m_ErrorCount; }
-
     private:
         UTFReader m_Reader;
         TextPosition m_TokenStartPosition;
-
-        unsigned int m_ErrorCount = 0;
 
         void Bump(unsigned int n = 1);
         // Get the current Codepoint
@@ -33,15 +29,13 @@ namespace scar {
         // Get the current Token's position
         TextPosition GetPosition() const { return m_Reader.GetPosition(); }
         // Get the current Token's span
-        Span GetSpan() const { return Span(GetSourceFile(), m_TokenStartPosition, GetPosition()); }
+        TextSpan GetSpan() const { return TextSpan(GetSourceFile(), m_TokenStartPosition, GetPosition()); }
         // Get the current Token's raw string
         std::string_view GetString() const { return GetSourceFile()->GetString(m_TokenStartPosition.Index, GetPosition().Index - m_TokenStartPosition.Index); }
 
-        void Error(std::string_view msg);
-        [[noreturn]] void ThrowError(std::string_view msg);
-
         // Main tokenization function
         Token GetNextToken();
+        Token GetNextTokenInner();
 
         // Read past whitespace and comments
         void SkipWhitespaceAndComments();

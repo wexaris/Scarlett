@@ -10,7 +10,7 @@ namespace scar {
         m_FilePath(path)
     {
         if (!m_File.is_open()) {
-            throw ParseError(ErrorCode::SourceFileError, [&]() { SCAR_ERROR("failed to open file: {}", path); });
+            SCAR_ERROR("failed to open file: {}", path);
         }
 
         m_File.seekg(0, std::ios::end);

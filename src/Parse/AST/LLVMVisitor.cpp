@@ -1,23 +1,33 @@
 #include "scarpch.hpp"
 #include "Parse/AST/LLVMVisitor.hpp"
 
-#pragma warning(push, 0)
-#pragma warning(disable:4996) // Deprecation
-#pragma warning(disable:4146) // Operator minus on unsigned type
-#pragma warning(disable:4244) // Type casts
-#include <llvm/ADT/APFloat.h>
-#include <llvm/ADT/STLExtras.h>
-#include <llvm/IR/BasicBlock.h>
+#ifdef _MSC_VER
+    #pragma warning(push, 0)
+    #pragma warning(disable:4996) // Deprecation
+    #pragma warning(disable:4146) // Operator minus on unsigned type
+    #pragma warning(disable:4244) // Type casts
+#endif
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/Verifier.h>
-#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/ADT/APFloat.h>
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/Transforms/Scalar.h>
 #include "llvm/Transforms/Utils.h"
-#pragma warning(pop)
+#ifdef _MSC_VER
+    #pragma warning(pop)
+#endif
+
+#define SPAN_ERROR(msg, span) SCAR_ERROR("{}: {}", span, msg)
 
 namespace scar {
     namespace ast {
@@ -26,7 +36,7 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // MISCELANEOUS
 
-        static llvm::Type* ASTTypeLLVMType(Type::VariableType type, llvm::LLVMContext& context) {
+        static llvm::Type* LLVMType(Type::ValueType type, llvm::LLVMContext& context) {
             switch (type) {
             case scar::ast::Type::Void: return llvm::Type::getVoidTy(context);
 
@@ -58,7 +68,7 @@ namespace scar {
             return nullptr;
         }
 
-        static unsigned int ASTTypeBits(Type::VariableType type) {
+        static unsigned int TypeBits(Type::ValueType type) {
             switch (type) {
             case scar::ast::Type::Bool: return 1;
 
@@ -85,7 +95,7 @@ namespace scar {
             return 0;
         }
 
-        static bool ASTTypeSigned(Type::VariableType type) {
+        static bool TypeIsSigned(Type::ValueType type) {
             switch (type) {
             case scar::ast::Type::I8:  return true;
             case scar::ast::Type::I16: return true;
@@ -113,22 +123,35 @@ namespace scar {
 
         class SymbolTable {
         public:
-            void Add(std::string_view name, llvm::AllocaInst* value) { m_Symbols.back()[name] = value; }
+            struct Symbol {
+                llvm::AllocaInst* Alloca;
+                llvm::Type* Type;
+                llvm::StringRef Name;
+            };
+
+            SymbolTable() {
+                PushScope();
+            }
+
+            void Add(const std::string& name, llvm::AllocaInst* symbol) {
+                m_Symbols.back()[name] = Symbol{ symbol, symbol->getType(), symbol->getName() };
+            }
+
             void PushScope() { m_Symbols.push_back({}); }
             void PopScope() { m_Symbols.pop_back(); }
 
-            llvm::AllocaInst* Find(std::string_view name) const {
+            const Symbol& Find(const std::string& name) const {
                 for (auto iter = m_Symbols.rbegin(); iter != m_Symbols.rend(); iter++) {
                     auto item = iter->find(name);
                     if (item != iter->end()) {
                         return item->second;
                     }
                 }
-                return nullptr;
+                SCAR_CRITICAL("Failed to identify symbol '{}'", name);
             }
 
         private:
-            std::vector<std::unordered_map<std::string_view, llvm::AllocaInst*>> m_Symbols = { {} };
+            std::vector<std::unordered_map<std::string, Symbol>> m_Symbols;
         };
 
         struct LoopBlocks {
@@ -137,34 +160,42 @@ namespace scar {
             LoopBlocks(llvm::BasicBlock* header, llvm::BasicBlock* exit) : Header(header), Exit(exit) {}
         };
 
-        struct VisitorData {
+        struct LLVMVisitorData {
+            llvm::LLVMContext Context;
+            Scope<llvm::IRBuilder<>> Builder;
+            Scope<llvm::legacy::FunctionPassManager> FunctionPassManager;
+            Scope<llvm::Module> Module;
+
             SymbolTable Symbols;
             std::vector<LoopBlocks> LoopStack;
-        };
-        static VisitorData s_Data;
+            bool BlockReturned = false;
 
-        LLVMVisitor::LLVMVisitor() :
-            m_Builder(m_Context),
-            m_Module(MakeScope<llvm::Module>("test_module", m_Context)),
-            m_FunctionPassManager(MakeScope<llvm::legacy::FunctionPassManager>(m_Module.get()))
-        {
-            m_FunctionPassManager->add(llvm::createPromoteMemoryToRegisterPass());
-            m_FunctionPassManager->add(llvm::createInstructionCombiningPass());
-            m_FunctionPassManager->add(llvm::createReassociatePass());
-            m_FunctionPassManager->add(llvm::createGVNPass());
-            m_FunctionPassManager->add(llvm::createCFGSimplificationPass());
-            m_FunctionPassManager->doInitialization();
+            // Return values across codegen functions
+            llvm::Value* RetValue = nullptr;
+            llvm::Type* RetType = nullptr;
+        };
+        static LLVMVisitorData s_Data{};
+
+        LLVMVisitor::LLVMVisitor() {
+            s_Data.Module = MakeScope<llvm::Module>("test_module", s_Data.Context);
+            s_Data.Builder = MakeScope<llvm::IRBuilder<>>(s_Data.Context);
+
+            s_Data.FunctionPassManager = MakeScope<llvm::legacy::FunctionPassManager>(s_Data.Module.get());
+            s_Data.FunctionPassManager->add(llvm::createPromoteMemoryToRegisterPass());
+            s_Data.FunctionPassManager->add(llvm::createInstructionCombiningPass());
+            s_Data.FunctionPassManager->add(llvm::createReassociatePass());
+            s_Data.FunctionPassManager->add(llvm::createGVNPass());
+            s_Data.FunctionPassManager->add(llvm::createCFGSimplificationPass());
+            s_Data.FunctionPassManager->doInitialization();
         }
 
-        void LLVMVisitor::ThrowError(std::string_view msg, const Span& span) {
-            throw ParseError(ErrorCode::Unknown, [&]() {
-                SCAR_ERROR("{}: {}", span, msg);
-            });
+        void LLVMVisitor::Print() const {
+            s_Data.Module->print(llvm::outs(), nullptr);
         }
 
         static llvm::AllocaInst* CreateEntryAlloca(llvm::Function* func, llvm::Type* type, const std::string& name)  {
             llvm::IRBuilder<> builder = llvm::IRBuilder<>(&func->getEntryBlock(), func->getEntryBlock().begin());
-            return builder.CreateAlloca(type, 0, name.c_str());
+            return s_Data.Builder->CreateAlloca(type, 0, name.c_str());
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -172,15 +203,18 @@ namespace scar {
         // TYPE
 
         void LLVMVisitor::Visit(Type& node) {
-            switch (node.VarType) {
+            switch (node.ValType) {
             case Type::Void:
-                m_ReturnType = llvm::Type::getDoubleTy(m_Context);
+                s_Data.RetType = llvm::Type::getDoubleTy(s_Data.Context);
+                return;
+            case Type::I32:
+                s_Data.RetType = llvm::Type::getInt32Ty(s_Data.Context);
                 return;
             case Type::F64:
-                m_ReturnType = llvm::Type::getDoubleTy(m_Context);
+                s_Data.RetType = llvm::Type::getDoubleTy(s_Data.Context);
                 return;
             default:
-                SCAR_BUG("missing LLVM IR code for VariableType {}", node.VarType);
+                SCAR_BUG("missing LLVM IR code for VariableType {}", node.ValType);
                 break;
             }
         }        
@@ -196,39 +230,38 @@ namespace scar {
         }
 
         void LLVMVisitor::Visit(Function& node) {
-            llvm::Function* func = m_Module->getFunction(node.Prototype->Name.GetString().data());
+            llvm::Function* func = s_Data.Module->getFunction(node.Prototype->Name.GetString().data());
 
             // Generate prototype if not already declared
             if (!func) {
                 node.Prototype->Accept(*this);
-                func = llvm::cast<llvm::Function>(m_ReturnValue);
+                func = llvm::cast<llvm::Function>(s_Data.RetValue);
 
                 if (!func) {
-                    m_ReturnValue = nullptr;
+                    s_Data.RetValue = nullptr;
                     return;
                 }
             }
 
-            llvm::BasicBlock* block = llvm::BasicBlock::Create(m_Context, "entry", func);
+            llvm::BasicBlock* block = llvm::BasicBlock::Create(s_Data.Context, "entry", func);
 
             s_Data.Symbols.PushScope();
-            m_Builder.SetInsertPoint(block);
+            s_Data.Builder->SetInsertPoint(block);
 
             // Add argument names to symbol table
             for (auto& arg : func->args()) {
                 llvm::AllocaInst* alloc = CreateEntryAlloca(func, arg.getType(), arg.getName());
-                m_Builder.CreateStore(&arg, alloc);
-
+                s_Data.Builder->CreateStore(&arg, alloc);
                 s_Data.Symbols.Add(arg.getName().data(), alloc);
             }
 
             node.CodeBlock->Accept(*this);
-            m_BlockReturned = false;
+            s_Data.BlockReturned = false;
 
             s_Data.Symbols.PopScope();
 
             // Make sure we have a return value
-            if (!m_ReturnValue) {
+            if (!s_Data.RetValue) {
                 func->eraseFromParent();
                 return;
             }
@@ -236,13 +269,13 @@ namespace scar {
             // Verify function code
             if (llvm::verifyFunction(*func, &llvm::errs())) {
                 func->eraseFromParent();
-                m_ReturnValue = nullptr;
+                s_Data.RetValue = nullptr;
                 return;
             }
             // Optimize function
-            m_FunctionPassManager->run(*func);
+            s_Data.FunctionPassManager->run(*func);
 
-            m_ReturnValue = func;
+            s_Data.RetValue = func;
         }
 
         void LLVMVisitor::Visit(FunctionPrototype& node) {
@@ -251,15 +284,15 @@ namespace scar {
             argTypes.reserve(node.Args.size());
             for (auto& arg : node.Args) {
                 arg.VarType->Accept(*this);
-                argTypes.push_back(m_ReturnType);
+                argTypes.push_back(s_Data.RetType);
             }
             // Return type
             node.ReturnType->Accept(*this);
-            llvm::Type* retType = m_ReturnType;
+            llvm::Type* retType = s_Data.RetType;
 
             // Create function
             llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
-            llvm::Function* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node.Name.GetString().data(), *m_Module);
+            llvm::Function* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node.Name.GetString().data(), *s_Data.Module);
 
             // Set argument names
             unsigned int index = 0;
@@ -267,7 +300,7 @@ namespace scar {
                 arg.setName(node.Args[index].Name.GetString().data());
             }
 
-            m_ReturnValue = func;
+            s_Data.RetValue = func;
             return;
         }
 
@@ -276,152 +309,150 @@ namespace scar {
         // STATEMENTS
 
         void LLVMVisitor::Visit(Branch& node) {
-            llvm::Function* func = m_Builder.GetInsertBlock()->getParent();
+            llvm::Function* func = s_Data.Builder->GetInsertBlock()->getParent();
 
-            llvm::BasicBlock* trueBlock = llvm::BasicBlock::Create(m_Context, "branch.true", func);
-            llvm::BasicBlock* falseBlock = llvm::BasicBlock::Create(m_Context, "branch.false", func);
-            llvm::BasicBlock* exitBlock = llvm::BasicBlock::Create(m_Context, "branch.exit");
+            llvm::BasicBlock* trueBlock = llvm::BasicBlock::Create(s_Data.Context, "branch.true", func);
+            llvm::BasicBlock* falseBlock = llvm::BasicBlock::Create(s_Data.Context, "branch.false", func);
+            llvm::BasicBlock* exitBlock = llvm::BasicBlock::Create(s_Data.Context, "branch.exit");
 
             s_Data.Symbols.PushScope();
 
             node.Condition->Accept(*this);
-            llvm::Value* cond = m_Builder.CreateFCmpONE(m_ReturnValue, llvm::ConstantFP::get(m_Context, llvm::APFloat(0.0)), "cond");
-            m_Builder.CreateCondBr(cond, trueBlock, falseBlock);
+            llvm::Value* cond = s_Data.Builder->CreateFCmpONE(s_Data.RetValue, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "cond");
+            s_Data.Builder->CreateCondBr(cond, trueBlock, falseBlock);
 
             bool needExit = false;
 
             // True block
-            m_Builder.SetInsertPoint(trueBlock);
+            s_Data.Builder->SetInsertPoint(trueBlock);
             node.TrueBlock->Accept(*this);
-            llvm::Value* trueRet = m_ReturnValue;
-            if (!m_BlockReturned) {
-                m_Builder.CreateBr(exitBlock);
+            if (!s_Data.BlockReturned) {
+                s_Data.Builder->CreateBr(exitBlock);
                 needExit |= true;
             }
-            m_BlockReturned = false;
-            trueBlock = m_Builder.GetInsertBlock();
+            s_Data.BlockReturned = false;
+            trueBlock = s_Data.Builder->GetInsertBlock();
 
             s_Data.Symbols.PopScope();
             s_Data.Symbols.PushScope();
 
             // False block
-            m_Builder.SetInsertPoint(falseBlock);
+            s_Data.Builder->SetInsertPoint(falseBlock);
             node.FalseBlock->Accept(*this);
-            llvm::Value* falseRet = m_ReturnValue;
-            if (!m_BlockReturned) {
-                m_Builder.CreateBr(exitBlock);
+            if (!s_Data.BlockReturned) {
+                s_Data.Builder->CreateBr(exitBlock);
                 needExit |= true;
             }
-            m_BlockReturned = false;
-            falseBlock = m_Builder.GetInsertBlock();
+            s_Data.BlockReturned = false;
+            falseBlock = s_Data.Builder->GetInsertBlock();
 
             // Exit
             s_Data.Symbols.PopScope();
 
             if (needExit) {
                 func->getBasicBlockList().push_back(exitBlock);
-                m_Builder.SetInsertPoint(exitBlock);
+                s_Data.Builder->SetInsertPoint(exitBlock);
 
                 // Merge branch return value
-                /*llvm::PHINode* phi = m_Builder.CreatePHI(llvm::Type::getDoubleTy(m_Context), (unsigned int)mergers.size(), "merge");
+                /*llvm::PHINode* phi = s_Data.Builder->CreatePHI(llvm::Type::getDoubleTy(s_Data.Context), (unsigned int)mergers.size(), "merge");
                 for (auto& merger : mergers) {
                     phi->addIncoming(merger.first, merger.second);
                 }
-                m_ReturnValue = phi;*/
+                s_Data.ReturnValue = phi;*/
             }
             else {
-                m_BlockReturned = true;
+                s_Data.BlockReturned = true;
             }
         }
 
         void LLVMVisitor::Visit(ForLoop& node) {
-            llvm::Function* func = m_Builder.GetInsertBlock()->getParent();
+            llvm::Function* func = s_Data.Builder->GetInsertBlock()->getParent();
 
-            llvm::BasicBlock* headerBlock = llvm::BasicBlock::Create(m_Context, "loop.header", func);
-            llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(m_Context, "loop.body", func);
-            llvm::BasicBlock* exitBlock = llvm::BasicBlock::Create(m_Context, "loop.exit", func);
+            llvm::BasicBlock* headerBlock = llvm::BasicBlock::Create(s_Data.Context, "loop.header", func);
+            llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(s_Data.Context, "loop.body", func);
+            llvm::BasicBlock* exitBlock = llvm::BasicBlock::Create(s_Data.Context, "loop.exit", func);
             s_Data.LoopStack.push_back({ headerBlock, exitBlock });
 
             s_Data.Symbols.PushScope();
 
             node.Init->Accept(*this);
-            m_Builder.CreateBr(headerBlock);
+            s_Data.Builder->CreateBr(headerBlock);
 
             // Header block
-            m_Builder.SetInsertPoint(headerBlock);
+            s_Data.Builder->SetInsertPoint(headerBlock);
             node.Condition->Accept(*this);
-            llvm::Value* cond = m_Builder.CreateFCmpONE(m_ReturnValue, llvm::ConstantFP::get(m_Context, llvm::APFloat(0.0)), "cond");
-            m_Builder.CreateCondBr(cond, bodyBlock, exitBlock);
+            llvm::Value* cond = s_Data.Builder->CreateFCmpONE(s_Data.RetValue, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "cond");
+            s_Data.Builder->CreateCondBr(cond, bodyBlock, exitBlock);
 
             // Body block
-            m_Builder.SetInsertPoint(bodyBlock);
+            s_Data.Builder->SetInsertPoint(bodyBlock);
             node.CodeBlock->Accept(*this);
-            if (!m_BlockReturned) {
+            if (!s_Data.BlockReturned) {
                 node.Update->Accept(*this);
-                m_Builder.CreateBr(headerBlock);
+                s_Data.Builder->CreateBr(headerBlock);
             }
-            m_BlockReturned = false;
+            s_Data.BlockReturned = false;
 
             // Exit
             s_Data.Symbols.PopScope();
             s_Data.LoopStack.pop_back();
-            m_Builder.SetInsertPoint(exitBlock);
+            s_Data.Builder->SetInsertPoint(exitBlock);
         }
 
         void LLVMVisitor::Visit(WhileLoop& node) {
-            llvm::Function* func = m_Builder.GetInsertBlock()->getParent();
+            llvm::Function* func = s_Data.Builder->GetInsertBlock()->getParent();
 
-            llvm::BasicBlock* headerBlock = llvm::BasicBlock::Create(m_Context, "loop.header", func);
-            llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(m_Context, "loop.body", func);
-            llvm::BasicBlock* exitBlock = llvm::BasicBlock::Create(m_Context, "loop.exit", func);
+            llvm::BasicBlock* headerBlock = llvm::BasicBlock::Create(s_Data.Context, "loop.header", func);
+            llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(s_Data.Context, "loop.body", func);
+            llvm::BasicBlock* exitBlock = llvm::BasicBlock::Create(s_Data.Context, "loop.exit", func);
             s_Data.LoopStack.push_back({ headerBlock, exitBlock });
 
             s_Data.Symbols.PushScope();
-            m_Builder.CreateBr(headerBlock);
+            s_Data.Builder->CreateBr(headerBlock);
 
             // Header block
-            m_Builder.SetInsertPoint(headerBlock);
+            s_Data.Builder->SetInsertPoint(headerBlock);
             node.Condition->Accept(*this);
-            llvm::Value* cond = m_Builder.CreateFCmpONE(m_ReturnValue, llvm::ConstantFP::get(m_Context, llvm::APFloat(0.0)), "cond");
-            m_Builder.CreateCondBr(cond, bodyBlock, exitBlock);
+            llvm::Value* cond = s_Data.Builder->CreateFCmpONE(s_Data.RetValue, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "cond");
+            s_Data.Builder->CreateCondBr(cond, bodyBlock, exitBlock);
 
             // Body block
-            m_Builder.SetInsertPoint(bodyBlock);
+            s_Data.Builder->SetInsertPoint(bodyBlock);
             node.CodeBlock->Accept(*this);
-            if (!m_BlockReturned) {
-                m_Builder.CreateBr(headerBlock);
+            if (!s_Data.BlockReturned) {
+                s_Data.Builder->CreateBr(headerBlock);
             }
-            m_BlockReturned = false;
+            s_Data.BlockReturned = false;
 
             // Exit
             s_Data.Symbols.PopScope();
             s_Data.LoopStack.pop_back();
-            m_Builder.SetInsertPoint(exitBlock);
+            s_Data.Builder->SetInsertPoint(exitBlock);
         }
 
         void LLVMVisitor::Visit(Block& node) {
             for (auto& item : node.Items) {
                 item->Accept(*this);
-                if (m_BlockReturned) {
+                if (s_Data.BlockReturned) {
                     return;
                 }
             }
         }
 
         void LLVMVisitor::Visit(Continue& node) {
-            m_Builder.CreateBr(s_Data.LoopStack.back().Header);
-            m_BlockReturned = true;
+            s_Data.Builder->CreateBr(s_Data.LoopStack.back().Header);
+            s_Data.BlockReturned = true;
         }
 
         void LLVMVisitor::Visit(Break& node) {
-            m_Builder.CreateBr(s_Data.LoopStack.back().Exit);
-            m_BlockReturned = true;
+            s_Data.Builder->CreateBr(s_Data.LoopStack.back().Exit);
+            s_Data.BlockReturned = true;
         }
 
         void LLVMVisitor::Visit(Return& node) {
             node.Value->Accept(*this);
-            m_Builder.CreateRet(m_ReturnValue);
-            m_BlockReturned = true;
+            s_Data.Builder->CreateRet(s_Data.RetValue);
+            s_Data.BlockReturned = true;
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -429,44 +460,44 @@ namespace scar {
         // EXPRESSIONS
 
         void LLVMVisitor::Visit(FunctionCall& node) {
-            llvm::Function* func = m_Module->getFunction(node.Name.GetString().data());
+            llvm::Function* func = s_Data.Module->getFunction(node.Name.GetString().data());
             if (!func) {
-                ThrowError(FMT("undeclared funcation call: {}", node.Name.GetString()), node.GetSpan());
+                SPAN_ERROR(FMT("undeclared funcation call: {}", node.Name.GetString()), node.GetSpan());
                 return;
             }
 
             if (func->arg_size() != node.Args.size()) {
-                ThrowError(FMT("incorrect number of arguments: {}", node.Name.GetString()), node.GetSpan());
+                SPAN_ERROR(FMT("incorrect number of arguments: {}", node.Name.GetString()), node.GetSpan());
                 return;
             }
 
             std::vector<llvm::Value*> argValues;
             for (size_t i = 0; i < node.Args.size(); i++) {
                 node.Args[i]->Accept(*this);
-                argValues.push_back(m_ReturnValue);
-                if (!m_ReturnValue) {
+                argValues.push_back(s_Data.RetValue);
+                if (!s_Data.RetValue) {
                     return;
                 }
             }
 
-            m_ReturnValue = m_Builder.CreateCall(func, argValues, "call");
+            s_Data.RetValue = s_Data.Builder->CreateCall(func, argValues, "call");
         }
 
         void LLVMVisitor::Visit(Var& node) {
-            llvm::Function* func = m_Builder.GetInsertBlock()->getParent();
+            llvm::Function* func = s_Data.Builder->GetInsertBlock()->getParent();
 
             node.VarType->Accept(*this);
-            llvm::AllocaInst* alloc = CreateEntryAlloca(func, m_ReturnType, node.Name.GetString().data());
+            llvm::AllocaInst* alloc = CreateEntryAlloca(func, s_Data.RetType, node.Name.GetString().data());
             s_Data.Symbols.Add(node.Name.GetString(), alloc);
             node.Assign->Accept(*this);
         }
 
         void LLVMVisitor::Visit(Variable& node) {
-            m_ReturnValue = s_Data.Symbols.Find(node.Name.GetString());
-            if (!m_ReturnValue) {
-                ThrowError(FMT("undeclared variable: {}", node.Name.GetString()), node.GetSpan());
+            s_Data.RetValue = s_Data.Symbols.Find(node.Name.GetString()).Alloca;
+            if (!s_Data.RetValue) {
+                SPAN_ERROR(FMT("undeclared variable: {}", node.Name.GetString()), node.GetSpan());
             }
-            m_ReturnValue = m_Builder.CreateLoad(m_ReturnValue, node.Name.GetString().data());
+            s_Data.RetValue = s_Data.Builder->CreateLoad(s_Data.RetValue, node.Name.GetString().data());
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -486,22 +517,22 @@ namespace scar {
                 break;
             case PrefixOperator::Minus:
                 node.RHS->Accept(*this);
-                m_ReturnValue = m_Builder.CreateFNeg(m_ReturnValue, "fneg");
+                s_Data.RetValue = s_Data.Builder->CreateFNeg(s_Data.RetValue, "fneg");
                 break;
             case PrefixOperator::Not:
                 node.RHS->Accept(*this);
-                m_ReturnValue = m_Builder.CreateFCmpUNE(m_ReturnValue, llvm::ConstantFP::get(m_Context, llvm::APFloat(0.0)), "fcmpone");
-                m_ReturnValue = m_Builder.CreateNot(m_ReturnValue, "not");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUNE(s_Data.RetValue, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "fcmpone");
+                s_Data.RetValue = s_Data.Builder->CreateNot(s_Data.RetValue, "not");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "fbool");
                 break;
             case PrefixOperator::BitNot:
                 node.RHS->Accept(*this);
-                m_ReturnValue = m_Builder.CreateNot(m_ReturnValue, "bitnot");
+                s_Data.RetValue = s_Data.Builder->CreateNot(s_Data.RetValue, "bitnot");
                 break;
 
             default:
                 SCAR_BUG("missing LLVM IR code for prefix operator {}", (int)node.Type);
-                m_ReturnValue = nullptr;
+                s_Data.RetValue = nullptr;
                 break;
             }
         }
@@ -517,41 +548,104 @@ namespace scar {
 
             default:
                 SCAR_BUG("missing LLVM IR code for prefix operator {}", node.Type);
-                m_ReturnValue = nullptr;
+                s_Data.RetValue = nullptr;
                 break;
             }
             node.LHS->Accept(*this);
         }
 
+        void MakeBothFloat(llvm::Value*& lhs, llvm::Value*& rhs, const Ref<Expr>& lhsNode, const Ref<Expr>& rhsNode) {
+            if (lhs->getType()->isIntegerTy()) {
+                if (TypeIsSigned(lhsNode->ValueType))
+                    lhs = s_Data.Builder->CreateSIToFP(lhs, rhs->getType(), "sitofp");
+                else lhs = s_Data.Builder->CreateUIToFP(lhs, rhs->getType(), "uitofp");
+            }
+            if (rhs->getType()->isIntegerTy()) {
+                if (TypeIsSigned(rhsNode->ValueType))
+                    rhs = s_Data.Builder->CreateSIToFP(rhs, lhs->getType(), "sitofp");
+                else rhs = s_Data.Builder->CreateUIToFP(rhs, lhs->getType(), "uitofp");
+            }
+        }
+
+        llvm::Value* CreateMul(llvm::Value* lhs, llvm::Value* rhs, const Ref<Expr>& lhsNode, const Ref<Expr>& rhsNode) {
+            if (lhs->getType()->isDoubleTy() || rhs->getType()->isDoubleTy()) {
+                MakeBothFloat(lhs, rhs, lhsNode, rhsNode);
+                return s_Data.Builder->CreateFMul(lhs, rhs, "fmul");
+            }
+            return s_Data.Builder->CreateMul(lhs, rhs, "mul");
+        }
+
+        llvm::Value* CreateDiv(llvm::Value* lhs, llvm::Value* rhs, const Ref<Expr>& lhsNode, const Ref<Expr>& rhsNode) {
+            if (lhs->getType()->isDoubleTy() || rhs->getType()->isDoubleTy()) {
+                MakeBothFloat(lhs, rhs, lhsNode, rhsNode);
+                return s_Data.Builder->CreateFDiv(lhs, rhs, "fdiv");
+            }
+            if (TypeIsSigned(lhsNode->ValueType) || TypeIsSigned(lhsNode->ValueType)) {
+                return s_Data.Builder->CreateSDiv(lhs, rhs, "sdiv");
+            }
+            return s_Data.Builder->CreateUDiv(lhs, rhs, "udiv");
+        }
+
+        llvm::Value* CreateRem(llvm::Value* lhs, llvm::Value* rhs, const Ref<Expr>& lhsNode, const Ref<Expr>& rhsNode) {
+            if (lhs->getType()->isDoubleTy() || rhs->getType()->isDoubleTy()) {
+                MakeBothFloat(lhs, rhs, lhsNode, rhsNode);
+                return s_Data.Builder->CreateFRem(lhs, rhs, "frem");
+            }
+            if (TypeIsSigned(lhsNode->ValueType) || TypeIsSigned(lhsNode->ValueType)) {
+                return s_Data.Builder->CreateSRem(lhs, rhs, "srem");
+            }
+            return s_Data.Builder->CreateURem(lhs, rhs, "urem");
+        }
+
+        llvm::Value* CreateAdd(llvm::Value* lhs, llvm::Value* rhs, const Ref<Expr>& lhsNode, const Ref<Expr>& rhsNode) {
+            if (lhs->getType()->isDoubleTy() || rhs->getType()->isDoubleTy()) {
+                MakeBothFloat(lhs, rhs, lhsNode, rhsNode);
+                return s_Data.Builder->CreateFAdd(lhs, rhs, "fadd");
+            }
+            return s_Data.Builder->CreateAdd(lhs, rhs, "add");
+        }
+
+        llvm::Value* CreateSub(llvm::Value* lhs, llvm::Value* rhs, const Ref<Expr>& lhsNode, const Ref<Expr>& rhsNode) {
+            if (lhs->getType()->isDoubleTy() || rhs->getType()->isDoubleTy()) {
+                MakeBothFloat(lhs, rhs, lhsNode, rhsNode);
+                return s_Data.Builder->CreateFSub(lhs, rhs, "fsub");
+            }
+            return s_Data.Builder->CreateSub(lhs, rhs, "sub");
+        }
+
         void LLVMVisitor::Visit(BinaryOperator& node) {
 
-            if (node.Type == BinaryOperator::Assign) {
+            switch (node.Type) {
+            case BinaryOperator::Assign: {
                 // Make sure LHS is a variable
                 Variable* lhsNode = dynamic_cast<Variable*>(node.LHS.get());
                 if (!lhsNode) {
-                    ThrowError("expected a variable", node.LHS->GetSpan());
+                    SPAN_ERROR("expected a variable", node.LHS->GetSpan());
                 }
+                // Visit RHS
                 node.RHS->Accept(*this);
-                llvm::Value* val = m_ReturnValue;
-                
-                // Get variable alloca
-                llvm::Value* var = s_Data.Symbols.Find(lhsNode->Name.GetString());
+                llvm::Value* val = s_Data.RetValue;
+
+                // Get variable allocator
+                llvm::Value* var = s_Data.Symbols.Find(lhsNode->Name.GetString()).Alloca;
                 if (!var) {
-                    ThrowError("undeclared variable", node.RHS->GetSpan());
+                    SPAN_ERROR("undeclared variable", node.RHS->GetSpan());
                 }
 
-                m_Builder.CreateStore(val, var);
-                m_ReturnValue = val;
+                s_Data.Builder->CreateStore(val, var);
+                s_Data.RetValue = val;
                 return;
+            }
+            default: break;
             }
 
             node.LHS->Accept(*this);
-            llvm::Value* lhs = m_ReturnValue;
+            llvm::Value* lhs = s_Data.RetValue;
             node.RHS->Accept(*this);
-            llvm::Value* rhs = m_ReturnValue;
+            llvm::Value* rhs = s_Data.RetValue;
 
             if (!lhs || !rhs) {
-                m_ReturnValue = nullptr;
+                s_Data.RetValue = nullptr;
                 return;
             }
 
@@ -560,72 +654,72 @@ namespace scar {
                 SCAR_BUG("BinaryOperator::MemberAccess not implemented");
                 break;
             case BinaryOperator::Multiply:
-                m_ReturnValue = m_Builder.CreateFMul(lhs, rhs, "fmul");
+                s_Data.RetValue = CreateMul(lhs, rhs, node.LHS, node.RHS);
                 break;
             case BinaryOperator::Divide:
-                m_ReturnValue = m_Builder.CreateFDiv(lhs, rhs, "fdiv");
+                s_Data.RetValue = CreateDiv(lhs, rhs, node.LHS, node.RHS);
                 break;
-            case BinaryOperator::Reminder:
-                m_ReturnValue = m_Builder.CreateFRem(lhs, rhs, "frem");
+            case BinaryOperator::Remainder:
+                s_Data.RetValue = CreateRem(lhs, rhs, node.LHS, node.RHS);
                 break;
             case BinaryOperator::Plus:
-                m_ReturnValue = m_Builder.CreateFAdd(lhs, rhs, "fadd");
+                s_Data.RetValue = CreateAdd(lhs, rhs, node.LHS, node.RHS);
                 break;
             case BinaryOperator::Minus:
-                m_ReturnValue = m_Builder.CreateFSub(lhs, rhs, "fsub");
+                s_Data.RetValue = CreateSub(lhs, rhs, node.LHS, node.RHS);
                 break;
             case BinaryOperator::Greater:
-                m_ReturnValue = m_Builder.CreateFCmpUGT(lhs, rhs, "fcmpugt");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUGT(lhs, rhs, "fcmpugt");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::GreaterEq:
-                m_ReturnValue = m_Builder.CreateFCmpUGE(lhs, rhs, "fcmpuge");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUGE(lhs, rhs, "fcmpuge");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::Lesser:
-                m_ReturnValue = m_Builder.CreateFCmpULT(lhs, rhs, "fcmpult");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpULT(lhs, rhs, "fcmpult");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LesserEq:
-                m_ReturnValue = m_Builder.CreateFCmpULE(lhs, rhs, "fcmpule");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpULE(lhs, rhs, "fcmpule");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::Eq:
-                m_ReturnValue = m_Builder.CreateFCmpUEQ(lhs, rhs, "fcmpueq");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUEQ(lhs, rhs, "fcmpueq");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::NotEq:
-                m_ReturnValue = m_Builder.CreateFCmpUNE(lhs, rhs, "fcmpune");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUNE(lhs, rhs, "fcmpune");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitAnd:
-                m_ReturnValue = m_Builder.CreateAnd(lhs, rhs, "and");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateAnd(lhs, rhs, "and");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitXOr:
-                m_ReturnValue = m_Builder.CreateXor(lhs, rhs, "xor");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateXor(lhs, rhs, "xor");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitOr:
-                m_ReturnValue = m_Builder.CreateOr(lhs, rhs, "or");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                s_Data.RetValue = s_Data.Builder->CreateOr(lhs, rhs, "or");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LogicAnd:
-                lhs = m_Builder.CreateFCmpONE(lhs, llvm::ConstantFP::get(m_Context, llvm::APFloat(0.0)), "lhscmp");
-                rhs = m_Builder.CreateFCmpONE(rhs, llvm::ConstantFP::get(m_Context, llvm::APFloat(0.0)), "rhscmp");
-                m_ReturnValue = m_Builder.CreateAnd(lhs, rhs, "and");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                lhs = s_Data.Builder->CreateFCmpONE(lhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "lhscmp");
+                rhs = s_Data.Builder->CreateFCmpONE(rhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "rhscmp");
+                s_Data.RetValue = s_Data.Builder->CreateAnd(lhs, rhs, "and");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LogicOr:
-                lhs = m_Builder.CreateFCmpONE(lhs, llvm::ConstantFP::get(m_Context, llvm::APFloat(0.0)), "lhscmp");
-                rhs = m_Builder.CreateFCmpONE(rhs, llvm::ConstantFP::get(m_Context, llvm::APFloat(0.0)), "rhscmp");
-                m_ReturnValue = m_Builder.CreateOr(lhs, rhs, "or");
-                m_ReturnValue = m_Builder.CreateUIToFP(m_ReturnValue, llvm::Type::getDoubleTy(m_Context), "fbool");
+                lhs = s_Data.Builder->CreateFCmpONE(lhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "lhscmp");
+                rhs = s_Data.Builder->CreateFCmpONE(rhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "rhscmp");
+                s_Data.RetValue = s_Data.Builder->CreateOr(lhs, rhs, "or");
+                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
           
             default:
                 SCAR_BUG("missing LLVM IR code for binary operator {}", node.Type);
-                m_ReturnValue = nullptr;
+                s_Data.RetValue = nullptr;
                 break;
             }
         }
@@ -635,25 +729,25 @@ namespace scar {
         // LITERALS
 
         void LLVMVisitor::Visit(LiteralBool& node) {
-            llvm::Type* type = ASTTypeLLVMType(node.GetValueType(), m_Context);
-            unsigned int bits = ASTTypeBits(node.GetValueType());
-            m_ReturnValue = llvm::ConstantInt::get(type, llvm::APInt(bits, node.Value));
+            llvm::Type* type = LLVMType(node.ValueType, s_Data.Context);
+            unsigned int bits = TypeBits(node.ValueType);
+            s_Data.RetValue = llvm::ConstantInt::get(type, llvm::APInt(bits, node.Value));
         }
 
         void LLVMVisitor::Visit(LiteralInteger& node) {
-            llvm::Type* type = ASTTypeLLVMType(node.GetValueType(), m_Context);
-            unsigned int bits = ASTTypeBits(node.GetValueType());
-            bool sign = ASTTypeSigned(node.GetValueType());
-            m_ReturnValue = llvm::ConstantInt::get(type, llvm::APInt(bits, node.Value, sign));
+            llvm::Type* type = LLVMType(node.ValueType, s_Data.Context);
+            unsigned int bits = TypeBits(node.ValueType);
+            bool sign = TypeIsSigned(node.ValueType);
+            s_Data.RetValue = llvm::ConstantInt::get(type, llvm::APInt(bits, node.Value, sign));
         }
 
         void LLVMVisitor::Visit(LiteralFloat& node) {
-            llvm::Type* type = ASTTypeLLVMType(node.GetValueType(), m_Context);
-            m_ReturnValue = llvm::ConstantFP::get(type, llvm::APFloat(node.Value));
+            llvm::Type* type = LLVMType(node.ValueType, s_Data.Context);
+            s_Data.RetValue = llvm::ConstantFP::get(type, llvm::APFloat(node.Value));
         }
 
         void LLVMVisitor::Visit(LiteralString& node) {
-            m_ReturnValue = nullptr;
+            s_Data.RetValue = nullptr;
         }
 
     }

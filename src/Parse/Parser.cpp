@@ -2,34 +2,36 @@
 #include "Parse/Parser.hpp"
 #include "Parse/Lex/Lexer.hpp"
 
+#define SPAN_ERROR(msg, span) SCAR_ERROR("{}: {}", span, msg)
+
 namespace scar {
 
     ///////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
     // MISCELANEOUS
 
-    static std::ostream& operator<<(std::ostream& os, const std::vector<Token::Type>& types) {
+    static std::ostream& operator<<(std::ostream& os, const std::vector<Token::TokenType>& types) {
         os << types[0];
         for (size_t i = 1; i < types.size(); i++) { os << "," << types[i]; }
         return os;
     }
 
-    static std::vector<Token::Type> operator+(const std::vector<Token::Type>& first, const std::vector<Token::Type>& second) {
-        std::vector<Token::Type> ret = first;
+    static std::vector<Token::TokenType> operator+(const std::vector<Token::TokenType>& first, const std::vector<Token::TokenType>& second) {
+        std::vector<Token::TokenType> ret = first;
         ret.insert(ret.end(), second.begin(), second.end());
         return ret;
     }
 
-    static std::vector<Token::Type> operator+(const std::vector<Token::Type>& vec, Token::Type type) {
-        std::vector<Token::Type> ret = vec;
+    static std::vector<Token::TokenType> operator+(const std::vector<Token::TokenType>& vec, Token::TokenType type) {
+        std::vector<Token::TokenType> ret = vec;
         ret.push_back(type);
         return ret;
     }
 
-    static std::vector<Token::Type> s_DeclStartTokens = {
+    static std::vector<Token::TokenType> s_DeclStartTokens = {
         Token::Func,
     };
-    static std::vector<Token::Type> s_StmtStartTokens = {
+    static std::vector<Token::TokenType> s_StmtStartTokens = {
         Token::If,
         Token::Else,
         Token::For,
@@ -43,19 +45,19 @@ namespace scar {
     };
     
     struct OperatorInfo {
-        Token::Type TokenType = Token::Invalid;
+        Token::TokenType TokenType = Token::Invalid;
         unsigned int Precedence = 0;
         enum Assoc { Left, Right } Associativity = Assoc::Left;
 
         OperatorInfo() = default;
-        OperatorInfo(Token::Type tokenType, unsigned int prec, Assoc assoc) :
+        OperatorInfo(Token::TokenType tokenType, unsigned int prec, Assoc assoc) :
             TokenType(tokenType),
             Precedence(prec),
             Associativity(assoc) {
         }
     };
 
-    static OperatorInfo GetPrefixOperatorInfo(Token::Type type) {
+    static OperatorInfo GetPrefixOperatorInfo(Token::TokenType type) {
         switch (type) {
         case Token::PlusPlus:   return OperatorInfo(type, 12, OperatorInfo::Right);
         case Token::MinusMinus: return OperatorInfo(type, 12, OperatorInfo::Right);
@@ -68,7 +70,7 @@ namespace scar {
             return OperatorInfo();
         }
     }
-    static OperatorInfo GetSuffixOperatorInfo(Token::Type type) {
+    static OperatorInfo GetSuffixOperatorInfo(Token::TokenType type) {
         switch (type) {
         case Token::PlusPlus:   return OperatorInfo(Token::PlusPlus,   13, OperatorInfo::Left);
         case Token::MinusMinus: return OperatorInfo(Token::MinusMinus, 13, OperatorInfo::Left);
@@ -77,7 +79,7 @@ namespace scar {
             return OperatorInfo();
         }
     }
-    static OperatorInfo GetBinaryOperatorInfo(Token::Type type) {
+    static OperatorInfo GetBinaryOperatorInfo(Token::TokenType type) {
         switch (type) {
         case Token::Dot:       return OperatorInfo(type, 13, OperatorInfo::Left);
         case Token::Star:      return OperatorInfo(type, 11, OperatorInfo::Left);
@@ -103,6 +105,22 @@ namespace scar {
         }
     }
 
+    ast::Type::ValueType ASTType(Token::TokenType tokenType) {
+        return (ast::Type::ValueType)tokenType;
+    }
+
+    ast::BinaryOperator::OpType ASTBinaryOp(Token::TokenType tokenType) {
+        return (ast::BinaryOperator::OpType)tokenType;
+    }
+
+    ast::PrefixOperator::OpType ASTPrefixOp(Token::TokenType tokenType) {
+        return (ast::PrefixOperator::OpType)tokenType;
+    }
+
+    ast::SuffixOperator::OpType ASTSuffixOp(Token::TokenType tokenType) {
+        return (ast::SuffixOperator::OpType)tokenType;
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
     // PARSER
@@ -117,7 +135,7 @@ namespace scar {
         m_Token++;
     }
 
-    bool Parser::Match(const std::vector<Token::Type>& expected) const {
+    bool Parser::Match(const std::vector<Token::TokenType>& expected) const {
         for (auto type : expected) {
             if (*m_Token == type) {
                 return true;
@@ -126,29 +144,19 @@ namespace scar {
         return false;
     }
 
-    Token& Parser::Expect(const std::vector<Token::Type>& expected) {
+    Token& Parser::Expect(const std::vector<Token::TokenType>& expected) {
         if (!Match(expected)) {
-            throw ParseError(ErrorCode::UnexpectedToken, [&]() {
-                m_ErrorCount++;
-                ThrowError(FMT("unexpected token: {} where {} was expected", *m_Token, expected), m_Token->GetSpan());
-            });
+            SPAN_ERROR(FMT("unexpected token: {} where {} was expected", *m_Token, expected), m_Token->Span);
         }
         Bump();
         return *(m_Token - 1);
     }
 
-    void Parser::Synchronize(const std::vector<Token::Type>& delims) {
+    void Parser::Synchronize(const std::vector<Token::TokenType>& delims) {
         SCAR_TRACE("synchronizing");
         while (!Match(delims)) {
             Bump();
         }
-    }
-
-    void Parser::ThrowError(std::string_view msg, const Span& span) {
-        throw ParseError(ErrorCode::UnexpectedToken, [&]() {
-            SCAR_ERROR("{}: {}", span, msg);
-            m_ErrorCount++;
-        });
     }
 
     Ref<ast::Module> Parser::Parse() {
@@ -175,7 +183,7 @@ namespace scar {
             Token::I8, Token::I16, Token::I32, Token::I64,
             Token::U8, Token::U16, Token::U32, Token::U64,
             Token::F32, Token::F64 });
-        return MakeRef<ast::Type>((ast::Type::VariableType)token.GetType(), token.GetSpan());
+        return MakeRef<ast::Type>((ast::Type::ValueType)token.Type, token.Span);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -185,7 +193,7 @@ namespace scar {
     // ident : IDENT
     ast::Ident Parser::Ident() {
         Token& token = Expect({ Token::Ident });
-        return ast::Ident(token.GetName(), token.GetSpan());
+        return ast::Ident(token.GetName(), token.Span);
     }
 
     // arg : ident type
@@ -205,14 +213,14 @@ namespace scar {
     // decl : function
     Ref<ast::Decl> Parser::Decl() {
         try {
-            switch (m_Token->GetType()) {
+            switch (m_Token->Type) {
             case Token::Func: return Function();
             default:
-                ThrowError("expected a declaration", m_Token->GetSpan());
+                SPAN_ERROR("expected a declaration", m_Token->Span);
                 break;
             }
         }
-        catch (ParseError& e) {
+        catch (CompilerError& e) {
             e.OnCatch();
             Synchronize({ s_DeclStartTokens });
             return nullptr;
@@ -280,7 +288,7 @@ namespace scar {
     //      | ;
     Ref<ast::Stmt> Parser::Stmt() {
         try {
-            switch (m_Token->GetType()) {
+            switch (m_Token->Type) {
             case Token::If:       return Branch();
             case Token::For:      return ForLoop();
             case Token::While:    return WhileLoop();
@@ -298,12 +306,12 @@ namespace scar {
                     return expr;
                 }
 
-                ThrowError("expected a statement", GetSpanFrom(start));
+                SPAN_ERROR("expected a statement", GetSpanFrom(start));
                 break;
             }
             }
         }
-        catch (ParseError& e) {
+        catch (CompilerError& e) {
             e.OnCatch();
             Synchronize({ s_StmtStartTokens });
             return nullptr;
@@ -371,7 +379,7 @@ namespace scar {
         TextPosition start = m_Token->GetTextPos();
 
         Expect({ Token::Loop });
-        Ref<ast::LiteralFloat> cond = MakeRef<ast::LiteralFloat>(1.0, ast::Type::F64, m_Token->GetSpan());
+        Ref<ast::LiteralFloat> cond = MakeRef<ast::LiteralFloat>(1.0, ast::Type::F64, m_Token->Span);
         Ref<ast::Block> block = Block();
 
         return MakeRef<ast::WhileLoop>(cond, block, GetSpanFrom(start));
@@ -441,7 +449,7 @@ namespace scar {
         }
 
         while (IsBinaryOperator()) {
-            OperatorInfo opInfo = GetBinaryOperatorInfo(m_Token->GetType());
+            OperatorInfo opInfo = GetBinaryOperatorInfo(m_Token->Type);
             if (opInfo.Precedence < prec) {
                 break;
             }
@@ -453,7 +461,7 @@ namespace scar {
                                       opInfo.Precedence);
 
             // Set LHS to complete expression
-            lhs = MakeRef<ast::BinaryOperator>((ast::BinaryOperator::OpType)opInfo.TokenType, lhs, rhs, GetSpanFrom(start));
+            lhs = MakeRef<ast::BinaryOperator>(ASTBinaryOp(opInfo.TokenType), lhs, rhs, GetSpanFrom(start));
         }
 
         return lhs;
@@ -470,7 +478,7 @@ namespace scar {
 
         // Parse prefix operator
         if (IsPrefixOperator()) {
-            OperatorInfo opInfo = GetPrefixOperatorInfo(m_Token->GetType());
+            OperatorInfo opInfo = GetPrefixOperatorInfo(m_Token->Type);
             if (opInfo.Precedence >= prec) {
                 Bump();
 
@@ -479,12 +487,12 @@ namespace scar {
                             opInfo.Precedence + 1 :
                             opInfo.Precedence);
 
-                return MakeRef<ast::PrefixOperator>((ast::PrefixOperator::OpType)opInfo.TokenType, atom, GetSpanFrom(start));
+                return MakeRef<ast::PrefixOperator>(ASTPrefixOp(opInfo.TokenType), atom, GetSpanFrom(start));
             }
         }
 
         // Parse atom body
-        switch (m_Token->GetType()) {
+        switch (m_Token->Type) {
         case Token::Ident: {
             ast::Ident ident = Ident();
             if (*m_Token == Token::LParen) {
@@ -511,11 +519,11 @@ namespace scar {
             Bump();
             break;
         case Token::LitInt:
-            atom = MakeRef<ast::LiteralInteger>(m_Token->GetInt(), (ast::Type::VariableType)m_Token->GetValueType(), GetSpanFrom(start));
+            atom = MakeRef<ast::LiteralInteger>(m_Token->GetInt(), ASTType(m_Token->ValueType), GetSpanFrom(start));
             Bump();
             break;
         case Token::LitFloat:
-            atom = MakeRef<ast::LiteralFloat>(m_Token->GetFloat(), (ast::Type::VariableType)m_Token->GetValueType(), GetSpanFrom(start));
+            atom = MakeRef<ast::LiteralFloat>(m_Token->GetFloat(), ASTType(m_Token->ValueType), GetSpanFrom(start));
             Bump();
             break;
         case Token::LitString:
@@ -524,17 +532,17 @@ namespace scar {
             break;
         default:
             if (allowEmpty) { return nullptr; }
-            ThrowError("invalid expression", GetSpanFrom(start));
+            SPAN_ERROR("invalid expression", GetSpanFrom(start));
             break;
         }
 
         // Parse suffix operator
         if (IsSuffixOperator()) {
-            OperatorInfo opInfo = GetSuffixOperatorInfo(m_Token->GetType());
+            OperatorInfo opInfo = GetSuffixOperatorInfo(m_Token->Type);
             if (opInfo.Precedence >= prec) {
                 Bump();
 
-                return MakeRef<ast::SuffixOperator>((ast::SuffixOperator::OpType)opInfo.TokenType, atom, GetSpanFrom(start));
+                return MakeRef<ast::SuffixOperator>(ASTSuffixOp(opInfo.TokenType), atom, GetSpanFrom(start));
             }
         }
 

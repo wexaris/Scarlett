@@ -27,7 +27,7 @@ namespace scar {
             s += (char)(0x80 | ((cp.Value >> 0) & 0x3F));
         }
         else {
-            throw RogueError(ErrorCode::InvalidUTF8, FMT("invalid UTF-8; value is too large: {0:#X}", cp.Value));
+            SCAR_CRITICAL("invalid UTF-8; value is too large: {0:#X}", cp.Value);
         }
         return s;
     }

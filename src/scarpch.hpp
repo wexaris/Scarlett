@@ -12,4 +12,3 @@
 
 #include "Core/Core.hpp"
 #include "Core/Log.hpp"
-#include "Core/Error.hpp"
