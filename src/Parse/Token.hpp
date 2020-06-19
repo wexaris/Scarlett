@@ -114,18 +114,15 @@ namespace scar {
 
         TextPosition GetTextPos() const { return TextPosition(Span.Line, Span.Col, Span.Index); }
         uint64_t GetInt() const {
-            if (Type != LitInt) 
-                SCAR_BUG("cannot get integer value from non-integer Token!");
+            SCAR_ASSERT(Type == LitInt, "trying to get integer value from non-integer token!");
             return std::get<0>(m_Value);
         }
         double GetFloat() const {
-            if (Type != LitFloat)
-                SCAR_BUG("cannot get float value from non-float Token!");
+            SCAR_ASSERT(Type == LitFloat, "trying to get floating point value from non-float Token!");
             return std::get<1>(m_Value);
         }
         Interner::StringID GetName() const {
-            if (Type != LitString && Type != Ident)
-                SCAR_BUG("cannot get StringID from non-string Token!");
+            SCAR_ASSERT(Type == LitString || Type == Ident, "trying to get StringID from non-string Token!");
             return std::get<2>(m_Value);
         }
         std::string_view GetString() const { return Interner::GetString(GetName()); }
