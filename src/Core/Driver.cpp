@@ -18,18 +18,18 @@ namespace scar {
             return;
 
         try {
-            // TODO: Pass Session into these passes.
-            // Session should provide one consistent error logging system,
-            // as well as handle error counting, so we don't have to query
-            // every visitor and parse individually.
             Parser parser(Session::GetInputFile());
             auto ast = parser.Parse();
 
-            ast::TypeCheckVisitor typeCheck;
-            ast->Accept(typeCheck);
+            if (Session::IsGood()) {
+                ast::TypeCheckVisitor typeCheck;
+                ast->Accept(typeCheck);
+            }
 
-            //ast::PrintVisitor print;
-            //ast->Accept(print);
+            if (Session::IsGood()) {
+                ast::PrintVisitor print;
+                ast->Accept(print);
+            }
 
             if (Session::IsGood()) {
                 ast::LLVMVisitor codegen;

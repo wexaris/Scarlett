@@ -56,14 +56,16 @@ namespace scar {
                 PushScope();
             }
 
-            void Add(const std::string& name, Type::ValueType type) {
+            void Add(const Ident& name, Type::ValueType type) { Add(name.GetString(), type); }
+            void Add(const std::string & name, Type::ValueType type) {
                 m_Symbols.back()[name] = type;
             }
             
             void PushScope() { m_Symbols.push_back({}); }
             void PopScope() { m_Symbols.pop_back(); }
 
-            Type::ValueType Find(const std::string& name) const {
+            Type::ValueType Find(const Ident& name) const { return Find(name.GetString()); }
+            Type::ValueType Find(const std::string & name) const {
                 for (auto iter = m_Symbols.rbegin(); iter != m_Symbols.rend(); iter++) {
                     auto item = iter->find(name);
                     if (item != iter->end()) {
@@ -114,10 +116,10 @@ namespace scar {
 
         void TypeCheckVisitor::Visit(FunctionPrototype& node) {
             Type::ValueType type = node.ReturnType->ValType;
-            s_Data.Symbols.Add(node.Name.GetString(), type);
+            s_Data.Symbols.Add(node.Name, type);
 
             for (auto& arg : node.Args) {
-                s_Data.Symbols.Add(arg.Name.GetString(), arg.VarType->ValType);
+                s_Data.Symbols.Add(arg.Name, arg.VarType->ValType);
             }
         }
 
@@ -175,7 +177,7 @@ namespace scar {
                 arg->Accept(*this);
             }
             // TODO: match arguments
-            Type::ValueType type = s_Data.Symbols.Find(node.Name.GetString());
+            Type::ValueType type = s_Data.Symbols.Find(node.Name);
             node.ValueType = type;
         }
 
@@ -184,12 +186,12 @@ namespace scar {
             if (IsVoid(node.ValueType)) {
                 SPAN_ERROR("invalid void type variable", node.VarType->GetSpan());
             }
-            s_Data.Symbols.Add(node.Name.GetString(), node.ValueType);
+            s_Data.Symbols.Add(node.Name, node.ValueType);
             node.Assign->Accept(*this);
         }
 
         void TypeCheckVisitor::Visit(Variable& node) {
-            Type::ValueType type = s_Data.Symbols.Find(node.Name.GetString());
+            Type::ValueType type = s_Data.Symbols.Find(node.Name);
             node.ValueType = type;
         }
 
@@ -314,7 +316,7 @@ namespace scar {
             case BinaryOperator::Minus:
                 if (IsInt(lhsType) || IsFloat(lhsType)) { node.ValueType = lhsType; }
                 else {
-                    SPAN_ERROR(FMT("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType), node.GetSpan());
+                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType);
                 }
                 break;
             case BinaryOperator::Greater:   [[fallthrough]];
@@ -323,14 +325,14 @@ namespace scar {
             case BinaryOperator::LesserEq:
                 if (IsBool(lhsType)) { node.ValueType = lhsType; }
                 else {
-                    SPAN_ERROR(FMT("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType), node.GetSpan());
+                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType);
                 }
                 break;
             case BinaryOperator::Eq:        [[fallthrough]];
             case BinaryOperator::NotEq:
                 if (IsBool(rhsType) || IsInt(rhsType) || IsFloat(rhsType)) { node.ValueType = lhsType; }
                 else {
-                    SPAN_ERROR(FMT("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType), node.GetSpan());
+                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType);
                 }
                 break;
             case BinaryOperator::BitAnd:    [[fallthrough]];
@@ -338,14 +340,14 @@ namespace scar {
             case BinaryOperator::BitOr:
                 if (IsBool(rhsType) || IsInt(rhsType) || IsFloat(rhsType)) { node.ValueType = lhsType; }
                 else {
-                    SPAN_ERROR(FMT("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType), node.GetSpan());
+                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType);
                 }
                 break;
             case BinaryOperator::LogicAnd:  [[fallthrough]];
             case BinaryOperator::LogicOr:
                 if (IsBool(lhsType)) { node.ValueType = lhsType; }
                 else {
-                    SPAN_ERROR("", node.GetSpan());
+                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ValueType);
                 }
                 break;
 

@@ -133,6 +133,7 @@ namespace scar {
                 PushScope();
             }
 
+            void Add(const Ident& name, llvm::AllocaInst* symbol) { Add(name.GetString(), symbol); }
             void Add(const std::string& name, llvm::AllocaInst* symbol) {
                 m_Symbols.back()[name] = Symbol{ symbol, symbol->getType(), symbol->getName() };
             }
@@ -140,6 +141,7 @@ namespace scar {
             void PushScope() { m_Symbols.push_back({}); }
             void PopScope() { m_Symbols.pop_back(); }
 
+            const Symbol& Find(const Ident& name) const { return Find(name.GetString()); }
             const Symbol& Find(const std::string& name) const {
                 for (auto iter = m_Symbols.rbegin(); iter != m_Symbols.rend(); iter++) {
                     auto item = iter->find(name);
@@ -174,7 +176,7 @@ namespace scar {
             llvm::Value* RetValue = nullptr;
             llvm::Type* RetType = nullptr;
         };
-        static LLVMVisitorData s_Data{};
+        static LLVMVisitorData s_Data;
 
         LLVMVisitor::LLVMVisitor() {
             s_Data.Module = MakeScope<llvm::Module>("test_module", s_Data.Context);
@@ -195,7 +197,7 @@ namespace scar {
 
         static llvm::AllocaInst* CreateEntryAlloca(llvm::Function* func, llvm::Type* type, const std::string& name)  {
             llvm::IRBuilder<> builder = llvm::IRBuilder<>(&func->getEntryBlock(), func->getEntryBlock().begin());
-            return s_Data.Builder->CreateAlloca(type, 0, name.c_str());
+            return s_Data.Builder->CreateAlloca(type, 0, name);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -230,7 +232,7 @@ namespace scar {
         }
 
         void LLVMVisitor::Visit(Function& node) {
-            llvm::Function* func = s_Data.Module->getFunction(node.Prototype->Name.GetString().data());
+            llvm::Function* func = s_Data.Module->getFunction(node.Prototype->Name.GetString());
 
             // Generate prototype if not already declared
             if (!func) {
@@ -252,7 +254,7 @@ namespace scar {
             for (auto& arg : func->args()) {
                 llvm::AllocaInst* alloc = CreateEntryAlloca(func, arg.getType(), arg.getName());
                 s_Data.Builder->CreateStore(&arg, alloc);
-                s_Data.Symbols.Add(arg.getName().data(), alloc);
+                s_Data.Symbols.Add(arg.getName(), alloc);
             }
 
             node.CodeBlock->Accept(*this);
@@ -292,12 +294,12 @@ namespace scar {
 
             // Create function
             llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
-            llvm::Function* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node.Name.GetString().data(), *s_Data.Module);
+            llvm::Function* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, node.Name.GetString(), *s_Data.Module);
 
             // Set argument names
             unsigned int index = 0;
             for (auto& arg : func->args()) {
-                arg.setName(node.Args[index].Name.GetString().data());
+                arg.setName(node.Args[index].Name.GetString());
             }
 
             s_Data.RetValue = func;
@@ -460,14 +462,14 @@ namespace scar {
         // EXPRESSIONS
 
         void LLVMVisitor::Visit(FunctionCall& node) {
-            llvm::Function* func = s_Data.Module->getFunction(node.Name.GetString().data());
+            llvm::Function* func = s_Data.Module->getFunction(node.Name.GetString());
             if (!func) {
-                SPAN_ERROR(FMT("undeclared funcation call: {}", node.Name.GetString()), node.GetSpan());
+                SPAN_ERROR(FMT("undeclared funcation call: {}", node.Name), node.GetSpan());
                 return;
             }
 
             if (func->arg_size() != node.Args.size()) {
-                SPAN_ERROR(FMT("incorrect number of arguments: {}", node.Name.GetString()), node.GetSpan());
+                SPAN_ERROR(FMT("incorrect number of arguments: {}", node.Name), node.GetSpan());
                 return;
             }
 
@@ -487,17 +489,17 @@ namespace scar {
             llvm::Function* func = s_Data.Builder->GetInsertBlock()->getParent();
 
             node.VarType->Accept(*this);
-            llvm::AllocaInst* alloc = CreateEntryAlloca(func, s_Data.RetType, node.Name.GetString().data());
-            s_Data.Symbols.Add(node.Name.GetString(), alloc);
+            llvm::AllocaInst* alloc = CreateEntryAlloca(func, s_Data.RetType, node.Name.GetString());
+            s_Data.Symbols.Add(node.Name, alloc);
             node.Assign->Accept(*this);
         }
 
         void LLVMVisitor::Visit(Variable& node) {
-            s_Data.RetValue = s_Data.Symbols.Find(node.Name.GetString()).Alloca;
+            s_Data.RetValue = s_Data.Symbols.Find(node.Name).Alloca;
             if (!s_Data.RetValue) {
-                SPAN_ERROR(FMT("undeclared variable: {}", node.Name.GetString()), node.GetSpan());
+                SPAN_ERROR(FMT("undeclared variable: {}", node.Name), node.GetSpan());
             }
-            s_Data.RetValue = s_Data.Builder->CreateLoad(s_Data.RetValue, node.Name.GetString().data());
+            s_Data.RetValue = s_Data.Builder->CreateLoad(s_Data.RetValue, node.Name.GetString());
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -627,9 +629,9 @@ namespace scar {
                 llvm::Value* val = s_Data.RetValue;
 
                 // Get variable allocator
-                llvm::Value* var = s_Data.Symbols.Find(lhsNode->Name.GetString()).Alloca;
+                llvm::Value* var = s_Data.Symbols.Find(lhsNode->Name).Alloca;
                 if (!var) {
-                    SPAN_ERROR("undeclared variable", node.RHS->GetSpan());
+                    SPAN_ERROR(FMT("undeclared variable {}", lhsNode->Name), node.RHS->GetSpan());
                 }
 
                 s_Data.Builder->CreateStore(val, var);

@@ -125,6 +125,10 @@ namespace scar {
             const TextSpan m_Span;
         };
 
+        static std::ostream& operator<<(std::ostream& os, const Ident& ident) {
+            return os << ident.GetString();
+        }
+
         struct Arg {
             const Ident Name;
             Ref<Type> VarType;
