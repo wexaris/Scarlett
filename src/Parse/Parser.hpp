@@ -32,9 +32,10 @@ namespace scar {
         ast::Ident Ident();
         ast::Arg Arg();
         // Declarations
-        Ref<ast::Decl> Decl();
-        Ref<ast::Decl> Function();
+        Ref<ast::Stmt> Global();
+        Ref<ast::Stmt> Function();
         Ref<ast::FunctionPrototype> FunctionPrototype();
+        Ref<ast::VarDecl> VarDecl();
         // Statements
         Ref<ast::Stmt> Stmt();
         Ref<ast::Branch> Branch();
@@ -49,7 +50,6 @@ namespace scar {
         Ref<ast::Expr> TryExpr();
         Ref<ast::Expr> Expr(unsigned int prec = 1, bool allowEmpty = false);
         Ref<ast::Expr> ExprAtom(unsigned int prec, bool allowEmpty = false);
-        Ref<ast::Var> Var();
 
         bool IsPrefixOperator() const;
         bool IsSuffixOperator() const;

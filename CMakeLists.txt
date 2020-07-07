@@ -23,7 +23,7 @@ set(SCAR_SRC
     src/Core/Log.cpp
     src/Parse/Parser.cpp
     src/Parse/AST/LLVMVisitor.cpp
-    src/Parse/AST/TypeCheckVisitor.cpp
+    src/Parse/AST/VerifyVisitor.cpp
     src/Parse/AST/PrintVisitor.cpp
     src/Parse/Lex/Lexer.cpp
     src/Parse/Lex/UTFReader.cpp
@@ -46,7 +46,7 @@ target_compile_options(scar PRIVATE
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
             -Wall -pedantic -O0 -g -Wno-unused-function>
         $<$<CXX_COMPILER_ID:MSVC>:
-            /W3 /RTC1 /Od>>
+            /ZI /W3 /RTC1 /Od>>
     $<$<CONFIG:RELEASE>: #RELEASE
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
             -O2 -s -DNDEBUG>

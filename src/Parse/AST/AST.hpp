@@ -18,6 +18,7 @@ namespace scar {
             virtual void Visit(class Module& node) = 0;
             virtual void Visit(class Function& node) = 0;
             virtual void Visit(class FunctionPrototype& node) = 0;
+            virtual void Visit(class VarDecl& node) = 0;
 
             virtual void Visit(class Branch& node) = 0;
             virtual void Visit(class ForLoop& node) = 0;
@@ -28,8 +29,8 @@ namespace scar {
             virtual void Visit(class Return& node) = 0;
 
             virtual void Visit(class FunctionCall& node) = 0;
-            virtual void Visit(class Var& node) = 0;
-            virtual void Visit(class Variable& node) = 0;
+            virtual void Visit(class VarAccess& node) = 0;
+            virtual void Visit(class Cast& node) = 0;
 
             virtual void Visit(class PrefixOperator& node) = 0;
             virtual void Visit(class SuffixOperator& node) = 0;
@@ -40,6 +41,40 @@ namespace scar {
             virtual void Visit(class LiteralFloat& node) = 0;
             virtual void Visit(class LiteralString& node) = 0;
         };
+
+        ///////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////
+        // TYPE
+
+        enum class TypeInfo {
+            Unknown = -1,
+            Void = 0,
+
+            Bool = Token::Bool,
+
+            I8 = Token::I8,
+            I16 = Token::I16,
+            I32 = Token::I32,
+            I64 = Token::I64,
+            U8 = Token::U8,
+
+            U16 = Token::U16,
+            U32 = Token::U32,
+            U64 = Token::U64,
+
+            F32 = Token::F32,
+            F64 = Token::F64,
+
+            Char = Token::Char,
+            String = Token::String
+        };
+
+        static std::ostream& operator<<(std::ostream& os, TypeInfo type) {
+            if (type == TypeInfo::Unknown) {
+                return os << "<unknown>";
+            }
+            return os << (Token::TokenType)type;
+        }
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
@@ -57,58 +92,22 @@ namespace scar {
 
 #define SCAR_GENERATE_NODE public: void Accept(Visitor& visitor) override { visitor.Visit(*this); }
 
-        class Type : public Node {
-            SCAR_GENERATE_NODE;
-        public:
-            enum ValueType {
-                Unknown = -1,
-                Void = 0,
-
-                Bool = Token::Bool,
-
-                I8  = Token::I8,
-                I16 = Token::I16,
-                I32 = Token::I32,
-                I64 = Token::I64,
-                U8  = Token::U8,
-
-                U16 = Token::U16,
-                U32 = Token::U32,
-                U64 = Token::U64,
-
-                F32 = Token::F32,
-                F64 = Token::F64,
-
-                Char = Token::Char,
-                String = Token::String
-            };
-            const ValueType ValType;
-            Type(ValueType type, const TextSpan& span) :
-                Node(span), ValType(type) {
-            }
-        };
-
-        static std::ostream& operator<<(std::ostream& os, Type::ValueType type) {
-            if (type == Type::Unknown) {
-                return os << "<unknown>";
-            }
-            return os << (Token::TokenType)type;
-        }
-
         class Stmt : public Node {
         public:
             Stmt(const TextSpan& span) : Node(span) {}
         };
 
-        class Decl : public Node {
-        public:
-            Decl(const TextSpan& span) : Node(span) {}
-        };
-
         class Expr : public Stmt {
         public:
-            Type::ValueType ValueType;
-            Expr(Type::ValueType type, const TextSpan& span) : Stmt(span), ValueType(type) {}
+            TypeInfo ResultType;
+            Expr(TypeInfo type, const TextSpan& span) : Stmt(span), ResultType(type) {}
+        };
+
+        class Type : public Stmt {
+            SCAR_GENERATE_NODE;
+        public:
+            const TypeInfo ResultType;
+            Type(TypeInfo type, const TextSpan& span) : Stmt(span), ResultType(type) {}
         };
 
         ///////////////////////////////////////////////////////////////////////
@@ -143,31 +142,40 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // DECLARATIONS
 
-        class Module : public Decl {
+        class Module : public Stmt {
             SCAR_GENERATE_NODE;
         public:
-            const std::vector<Ref<Decl>> Items;
-            Module(const std::vector<Ref<Decl>>& items, const TextSpan& span) :
-                Decl(span), Items(items) {}
+            const std::vector<Ref<Stmt>> Items;
+            Module(const std::vector<Ref<Stmt>>& items, const TextSpan& span) :
+                Stmt(span), Items(items) {}
         };
 
-        class Function : public Decl {
+        class Function : public Stmt {
             SCAR_GENERATE_NODE;
         public:
             Ref<FunctionPrototype> Prototype;
             Ref<Block> CodeBlock;
             Function(const Ref<FunctionPrototype>& prototype, const Ref<Block>& block, const TextSpan& span) :
-                Decl(span), Prototype(prototype), CodeBlock(block) {}
+                Stmt(span), Prototype(prototype), CodeBlock(block) {}
         };
 
-        class FunctionPrototype : public Decl {
+        class FunctionPrototype : public Stmt {
             SCAR_GENERATE_NODE;
         public:
             Ident Name;
             std::vector<Arg> Args;
             Ref<Type> ReturnType;
             FunctionPrototype(Ident name, const std::vector<Arg>& args, const Ref<Type>& retType, const TextSpan& span) :
-                Decl(span), Name(name), Args(args), ReturnType(retType) {}
+                Stmt(span), Name(name), Args(args), ReturnType(retType) {}
+        };
+
+        class VarDecl : public Expr {
+            SCAR_GENERATE_NODE;
+        public:
+            Ident Name;
+            Ref<Type> VarType;
+            VarDecl(Ident name, const Ref<Type>& type, const TextSpan& span) :
+                Expr(type->ResultType, span), Name(name), VarType(type) {}
         };
 
         ///////////////////////////////////////////////////////////////////////
@@ -242,26 +250,24 @@ namespace scar {
             Ident Name;
             std::vector<Ref<Expr>> Args;
             FunctionCall(const Ident& name, const std::vector<Ref<Expr>>& args, const TextSpan& span) :
-                Expr(Type::Unknown, span), Name(name), Args(args) {}
+                Expr(TypeInfo::Unknown, span), Name(name), Args(args) {}
         };
 
-        class Var : public Expr {
+        class VarAccess : public Expr {
             SCAR_GENERATE_NODE;
         public:
             Ident Name;
-            Ref<Type> VarType;
-            Ref<BinaryOperator> Assign;
-            Var(Ident name, const Ref<Type>& type, const Ref<BinaryOperator>& assign, const TextSpan& span) :
-                Expr(type->ValType, span), Name(name), VarType(type), Assign(assign) {
+            VarAccess(const Ident& name, const TextSpan& span) :
+                Expr(TypeInfo::Unknown, span), Name(name) {}
+        };
+
+        class Cast : public Expr {
+            SCAR_GENERATE_NODE;
+        public:
+            Ref<Expr> LHS;
+            Cast(const Ref<Expr>& lhs, TypeInfo resultType, const TextSpan& span) :
+                Expr(resultType, span), LHS(lhs) {
             }
-        };
-
-        class Variable : public Expr {
-            SCAR_GENERATE_NODE;
-        public:
-            Ident Name;
-            Variable(const Ident& name, const TextSpan& span) :
-                Expr(Type::Unknown, span), Name(name) {}
         };
 
         ///////////////////////////////////////////////////////////////////////
@@ -283,7 +289,7 @@ namespace scar {
             const OpType Type;
             Ref<Expr> RHS;
             PrefixOperator(OpType type, const Ref<Expr>& expr, const TextSpan& span) :
-                Expr(Type::Unknown, span), Type(type), RHS(expr) {}
+                Expr(TypeInfo::Unknown, span), Type(type), RHS(expr) {}
         };
 
         class SuffixOperator : public Expr {
@@ -297,7 +303,7 @@ namespace scar {
             const OpType Type;
             Ref<Expr> LHS;
             SuffixOperator(OpType type, const Ref<Expr>& expr, const TextSpan& span) :
-                Expr(Type::Unknown, span), Type(type), LHS(expr) {}
+                Expr(TypeInfo::Unknown, span), Type(type), LHS(expr) {}
         };
 
         class BinaryOperator : public Expr {
@@ -328,7 +334,7 @@ namespace scar {
             Ref<Expr> LHS;
             Ref<Expr> RHS;
             BinaryOperator(OpType type, const Ref<Expr>& lhs, const Ref<Expr>& rhs, const TextSpan& span) :
-                Expr(Type::Unknown, span), Type(type), LHS(lhs), RHS(rhs) {}
+                Expr(TypeInfo::Unknown, span), Type(type), LHS(lhs), RHS(rhs) {}
         };
 
         static std::ostream& operator<<(std::ostream& os, PrefixOperator::OpType opType) {
@@ -350,7 +356,7 @@ namespace scar {
         public:
             const bool Value;
             LiteralBool(bool val, const TextSpan& span) :
-                Expr(Type::Bool, span), Value(val) {
+                Expr(TypeInfo::Bool, span), Value(val) {
             }
         };
 
@@ -358,7 +364,7 @@ namespace scar {
             SCAR_GENERATE_NODE;
         public:
             const uint64_t Value;
-            LiteralInteger(uint64_t val, Type::ValueType type, const TextSpan& span) :
+            LiteralInteger(uint64_t val, TypeInfo type, const TextSpan& span) :
                 Expr(type, span), Value(val) {}
         };
 
@@ -366,7 +372,7 @@ namespace scar {
             SCAR_GENERATE_NODE;
         public:
             const double Value;
-            LiteralFloat(double val, Type::ValueType type, const TextSpan& span) :
+            LiteralFloat(double val, TypeInfo type, const TextSpan& span) :
                 Expr(type, span), Value(val) {}
         };
 
@@ -375,7 +381,7 @@ namespace scar {
         public:
             const Interner::StringID StringID;
             LiteralString(Interner::StringID id, const TextSpan& span) :
-                Expr(Type::String, span), StringID(id) {}
+                Expr(TypeInfo::String, span), StringID(id) {}
         };
 
     }

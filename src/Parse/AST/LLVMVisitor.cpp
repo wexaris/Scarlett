@@ -36,29 +36,29 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // MISCELANEOUS
 
-        static llvm::Type* LLVMType(Type::ValueType type, llvm::LLVMContext& context) {
+        static llvm::Type* LLVMType(TypeInfo type, llvm::LLVMContext& context) {
             switch (type) {
-            case scar::ast::Type::Void: return llvm::Type::getVoidTy(context);
+            case scar::ast::TypeInfo::Void: return llvm::Type::getVoidTy(context);
 
-            case scar::ast::Type::Bool: return llvm::Type::getInt1Ty(context);
+            case scar::ast::TypeInfo::Bool: return llvm::Type::getInt1Ty(context);
 
-            case scar::ast::Type::I8:  return llvm::Type::getInt8Ty(context);
-            case scar::ast::Type::I16: return llvm::Type::getInt16Ty(context);
-            case scar::ast::Type::I32: return llvm::Type::getInt32Ty(context);
-            case scar::ast::Type::I64: return llvm::Type::getInt64Ty(context);
+            case scar::ast::TypeInfo::I8:  return llvm::Type::getInt8Ty(context);
+            case scar::ast::TypeInfo::I16: return llvm::Type::getInt16Ty(context);
+            case scar::ast::TypeInfo::I32: return llvm::Type::getInt32Ty(context);
+            case scar::ast::TypeInfo::I64: return llvm::Type::getInt64Ty(context);
 
-            case scar::ast::Type::U8:  return llvm::Type::getInt8Ty(context);
-            case scar::ast::Type::U16: return llvm::Type::getInt16Ty(context);
-            case scar::ast::Type::U32: return llvm::Type::getInt32Ty(context);
-            case scar::ast::Type::U64: return llvm::Type::getInt64Ty(context);
+            case scar::ast::TypeInfo::U8:  return llvm::Type::getInt8Ty(context);
+            case scar::ast::TypeInfo::U16: return llvm::Type::getInt16Ty(context);
+            case scar::ast::TypeInfo::U32: return llvm::Type::getInt32Ty(context);
+            case scar::ast::TypeInfo::U64: return llvm::Type::getInt64Ty(context);
 
-            case scar::ast::Type::F32: return llvm::Type::getFloatTy(context);
-            case scar::ast::Type::F64: return llvm::Type::getDoubleTy(context);
+            case scar::ast::TypeInfo::F32: return llvm::Type::getFloatTy(context);
+            case scar::ast::TypeInfo::F64: return llvm::Type::getDoubleTy(context);
 
-            case scar::ast::Type::Char:
+            case scar::ast::TypeInfo::Char:
                 SCAR_BUG("missing llvm::Type for Type::Char");
                 break;
-            case scar::ast::Type::String:
+            case scar::ast::TypeInfo::String:
                 SCAR_BUG("missing llvm::Type for Type::String");
                 break;
             default:
@@ -68,24 +68,24 @@ namespace scar {
             return nullptr;
         }
 
-        static unsigned int TypeBits(Type::ValueType type) {
+        static unsigned int TypeBits(TypeInfo type) {
             switch (type) {
-            case scar::ast::Type::Bool: return 1;
+            case scar::ast::TypeInfo::Bool: return 1;
 
-            case scar::ast::Type::I8:  return 8;
-            case scar::ast::Type::I16: return 16;
-            case scar::ast::Type::I32: return 32;
-            case scar::ast::Type::I64: return 64;
+            case scar::ast::TypeInfo::I8:  return 8;
+            case scar::ast::TypeInfo::I16: return 16;
+            case scar::ast::TypeInfo::I32: return 32;
+            case scar::ast::TypeInfo::I64: return 64;
 
-            case scar::ast::Type::U8:  return 8;
-            case scar::ast::Type::U16: return 16;
-            case scar::ast::Type::U32: return 32;
-            case scar::ast::Type::U64: return 64;
+            case scar::ast::TypeInfo::U8:  return 8;
+            case scar::ast::TypeInfo::U16: return 16;
+            case scar::ast::TypeInfo::U32: return 32;
+            case scar::ast::TypeInfo::U64: return 64;
 
-            case scar::ast::Type::F32: return 32;
-            case scar::ast::Type::F64: return 64;
+            case scar::ast::TypeInfo::F32: return 32;
+            case scar::ast::TypeInfo::F64: return 64;
 
-            case scar::ast::Type::Char:
+            case scar::ast::TypeInfo::Char:
                 SCAR_BUG("missing bit count for Type::Char");
                 break;
             default:
@@ -95,19 +95,19 @@ namespace scar {
             return 0;
         }
 
-        static bool TypeIsSigned(Type::ValueType type) {
+        static bool TypeIsSigned(TypeInfo type) {
             switch (type) {
-            case scar::ast::Type::I8:  return true;
-            case scar::ast::Type::I16: return true;
-            case scar::ast::Type::I32: return true;
-            case scar::ast::Type::I64: return true;
+            case scar::ast::TypeInfo::I8:  return true;
+            case scar::ast::TypeInfo::I16: return true;
+            case scar::ast::TypeInfo::I32: return true;
+            case scar::ast::TypeInfo::I64: return true;
 
-            case scar::ast::Type::U8:  return false;
-            case scar::ast::Type::U16: return false;
-            case scar::ast::Type::U32: return false;
-            case scar::ast::Type::U64: return false;
+            case scar::ast::TypeInfo::U8:  return false;
+            case scar::ast::TypeInfo::U16: return false;
+            case scar::ast::TypeInfo::U32: return false;
+            case scar::ast::TypeInfo::U64: return false;
 
-            case scar::ast::Type::Char:
+            case scar::ast::TypeInfo::Char:
                 SCAR_BUG("missing bit count for Type::Char");
                 break;
             default:
@@ -149,7 +149,7 @@ namespace scar {
                         return item->second;
                     }
                 }
-                SCAR_CRITICAL("Failed to identify symbol '{}'", name);
+                SCAR_CRITICAL("Symbol '{}' not found in SymbolTable!", name);
             }
 
         private:
@@ -173,6 +173,7 @@ namespace scar {
             bool BlockReturned = false;
 
             // Return values across codegen functions
+            llvm::AllocaInst* RetAlloca = nullptr;
             llvm::Value* RetValue = nullptr;
             llvm::Type* RetType = nullptr;
         };
@@ -205,18 +206,18 @@ namespace scar {
         // TYPE
 
         void LLVMVisitor::Visit(Type& node) {
-            switch (node.ValType) {
-            case Type::Void:
+            switch (node.ResultType) {
+            case TypeInfo::Void:
                 s_Data.RetType = llvm::Type::getDoubleTy(s_Data.Context);
                 return;
-            case Type::I32:
+            case TypeInfo::I32:
                 s_Data.RetType = llvm::Type::getInt32Ty(s_Data.Context);
                 return;
-            case Type::F64:
+            case TypeInfo::F64:
                 s_Data.RetType = llvm::Type::getDoubleTy(s_Data.Context);
                 return;
             default:
-                SCAR_BUG("missing LLVM IR code for VariableType {}", node.ValType);
+                SCAR_BUG("missing LLVM IR code for VariableType {}", node.ResultType);
                 break;
             }
         }        
@@ -304,6 +305,17 @@ namespace scar {
 
             s_Data.RetValue = func;
             return;
+        }
+
+        void LLVMVisitor::Visit(VarDecl& node) {
+            llvm::Function* func = s_Data.Builder->GetInsertBlock()->getParent();
+
+            node.VarType->Accept(*this);
+            llvm::AllocaInst* alloc = CreateEntryAlloca(func, s_Data.RetType, node.Name.GetString());
+            s_Data.Symbols.Add(node.Name, alloc);
+
+            s_Data.RetValue = s_Data.Builder->CreateLoad(alloc, node.Name.GetString());
+            s_Data.RetAlloca = alloc;
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -485,21 +497,14 @@ namespace scar {
             s_Data.RetValue = s_Data.Builder->CreateCall(func, argValues, "call");
         }
 
-        void LLVMVisitor::Visit(Var& node) {
-            llvm::Function* func = s_Data.Builder->GetInsertBlock()->getParent();
-
-            node.VarType->Accept(*this);
-            llvm::AllocaInst* alloc = CreateEntryAlloca(func, s_Data.RetType, node.Name.GetString());
-            s_Data.Symbols.Add(node.Name, alloc);
-            node.Assign->Accept(*this);
+        void LLVMVisitor::Visit(VarAccess& node) {
+            s_Data.RetAlloca = s_Data.Symbols.Find(node.Name).Alloca;
+            s_Data.RetValue = s_Data.Builder->CreateLoad(s_Data.RetAlloca, node.Name.GetString());
         }
 
-        void LLVMVisitor::Visit(Variable& node) {
-            s_Data.RetValue = s_Data.Symbols.Find(node.Name).Alloca;
-            if (!s_Data.RetValue) {
-                SPAN_ERROR(FMT("undeclared variable: {}", node.Name), node.GetSpan());
-            }
-            s_Data.RetValue = s_Data.Builder->CreateLoad(s_Data.RetValue, node.Name.GetString());
+        void LLVMVisitor::Visit(Cast& node) {
+            node.LHS->Accept(*this);
+            // TODO: add per-type casting
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -558,12 +563,12 @@ namespace scar {
 
         void MakeBothFloat(llvm::Value*& lhs, llvm::Value*& rhs, const Ref<Expr>& lhsNode, const Ref<Expr>& rhsNode) {
             if (lhs->getType()->isIntegerTy()) {
-                if (TypeIsSigned(lhsNode->ValueType))
+                if (TypeIsSigned(lhsNode->ResultType))
                     lhs = s_Data.Builder->CreateSIToFP(lhs, rhs->getType(), "sitofp");
                 else lhs = s_Data.Builder->CreateUIToFP(lhs, rhs->getType(), "uitofp");
             }
             if (rhs->getType()->isIntegerTy()) {
-                if (TypeIsSigned(rhsNode->ValueType))
+                if (TypeIsSigned(rhsNode->ResultType))
                     rhs = s_Data.Builder->CreateSIToFP(rhs, lhs->getType(), "sitofp");
                 else rhs = s_Data.Builder->CreateUIToFP(rhs, lhs->getType(), "uitofp");
             }
@@ -582,7 +587,7 @@ namespace scar {
                 MakeBothFloat(lhs, rhs, lhsNode, rhsNode);
                 return s_Data.Builder->CreateFDiv(lhs, rhs, "fdiv");
             }
-            if (TypeIsSigned(lhsNode->ValueType) || TypeIsSigned(lhsNode->ValueType)) {
+            if (TypeIsSigned(lhsNode->ResultType) || TypeIsSigned(lhsNode->ResultType)) {
                 return s_Data.Builder->CreateSDiv(lhs, rhs, "sdiv");
             }
             return s_Data.Builder->CreateUDiv(lhs, rhs, "udiv");
@@ -593,7 +598,7 @@ namespace scar {
                 MakeBothFloat(lhs, rhs, lhsNode, rhsNode);
                 return s_Data.Builder->CreateFRem(lhs, rhs, "frem");
             }
-            if (TypeIsSigned(lhsNode->ValueType) || TypeIsSigned(lhsNode->ValueType)) {
+            if (TypeIsSigned(lhsNode->ResultType) || TypeIsSigned(lhsNode->ResultType)) {
                 return s_Data.Builder->CreateSRem(lhs, rhs, "srem");
             }
             return s_Data.Builder->CreateURem(lhs, rhs, "urem");
@@ -619,22 +624,15 @@ namespace scar {
 
             switch (node.Type) {
             case BinaryOperator::Assign: {
-                // Make sure LHS is a variable
-                Variable* lhsNode = dynamic_cast<Variable*>(node.LHS.get());
-                if (!lhsNode) {
-                    SPAN_ERROR("expected a variable", node.LHS->GetSpan());
-                }
+                // Visit LHS
+                node.LHS->Accept(*this);
+                llvm::AllocaInst* alloc = s_Data.RetAlloca;
+
                 // Visit RHS
                 node.RHS->Accept(*this);
                 llvm::Value* val = s_Data.RetValue;
 
-                // Get variable allocator
-                llvm::Value* var = s_Data.Symbols.Find(lhsNode->Name).Alloca;
-                if (!var) {
-                    SPAN_ERROR(FMT("undeclared variable {}", lhsNode->Name), node.RHS->GetSpan());
-                }
-
-                s_Data.Builder->CreateStore(val, var);
+                s_Data.Builder->CreateStore(val, alloc);
                 s_Data.RetValue = val;
                 return;
             }
@@ -731,20 +729,20 @@ namespace scar {
         // LITERALS
 
         void LLVMVisitor::Visit(LiteralBool& node) {
-            llvm::Type* type = LLVMType(node.ValueType, s_Data.Context);
-            unsigned int bits = TypeBits(node.ValueType);
+            llvm::Type* type = LLVMType(node.ResultType, s_Data.Context);
+            unsigned int bits = TypeBits(node.ResultType);
             s_Data.RetValue = llvm::ConstantInt::get(type, llvm::APInt(bits, node.Value));
         }
 
         void LLVMVisitor::Visit(LiteralInteger& node) {
-            llvm::Type* type = LLVMType(node.ValueType, s_Data.Context);
-            unsigned int bits = TypeBits(node.ValueType);
-            bool sign = TypeIsSigned(node.ValueType);
+            llvm::Type* type = LLVMType(node.ResultType, s_Data.Context);
+            unsigned int bits = TypeBits(node.ResultType);
+            bool sign = TypeIsSigned(node.ResultType);
             s_Data.RetValue = llvm::ConstantInt::get(type, llvm::APInt(bits, node.Value, sign));
         }
 
         void LLVMVisitor::Visit(LiteralFloat& node) {
-            llvm::Type* type = LLVMType(node.ValueType, s_Data.Context);
+            llvm::Type* type = LLVMType(node.ResultType, s_Data.Context);
             s_Data.RetValue = llvm::ConstantFP::get(type, llvm::APFloat(node.Value));
         }
 

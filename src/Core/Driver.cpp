@@ -3,7 +3,7 @@
 #include "Core/Session.hpp"
 #include "Parse/Parser.hpp"
 #include "Parse/AST/LLVMVisitor.hpp"
-#include "Parse/AST/TypeCheckVisitor.hpp"
+#include "Parse/AST/VerifyVisitor.hpp"
 #include "Parse/AST/PrintVisitor.hpp"
 
 namespace scar {

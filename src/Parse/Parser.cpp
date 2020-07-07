@@ -105,8 +105,8 @@ namespace scar {
         }
     }
 
-    ast::Type::ValueType ASTType(Token::TokenType tokenType) {
-        return (ast::Type::ValueType)tokenType;
+    ast::TypeInfo ASTType(Token::TokenType tokenType) {
+        return (ast::TypeInfo)tokenType;
     }
 
     ast::BinaryOperator::OpType ASTBinaryOp(Token::TokenType tokenType) {
@@ -161,9 +161,9 @@ namespace scar {
 
     Ref<ast::Module> Parser::Parse() {
         TextPosition start;
-        std::vector<Ref<ast::Decl>> items;
+        std::vector<Ref<ast::Stmt>> items;
         while (*m_Token != Token::EndOfFile) {
-            if (auto item = Decl()) {
+            if (auto item = Global()) {
                 items.push_back(item);
             }
         }
@@ -183,7 +183,7 @@ namespace scar {
             Token::I8, Token::I16, Token::I32, Token::I64,
             Token::U8, Token::U16, Token::U32, Token::U64,
             Token::F32, Token::F64 });
-        return MakeRef<ast::Type>((ast::Type::ValueType)token.Type, token.Span);
+        return MakeRef<ast::Type>((ast::TypeInfo)token.Type, token.Span);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -210,8 +210,8 @@ namespace scar {
     ///////////////////////////////////////////////////////////////////////////
     // DECLARATIONS
 
-    // decl : function
-    Ref<ast::Decl> Parser::Decl() {
+    // global : function
+    Ref<ast::Stmt> Parser::Global() {
         try {
             switch (m_Token->Type) {
             case Token::Func: return Function();
@@ -231,7 +231,7 @@ namespace scar {
 
     // function : prototype block
     //          | prototype ;
-    Ref<ast::Decl> Parser::Function() {
+    Ref<ast::Stmt> Parser::Function() {
         TextPosition start = m_Token->GetTextPos();
 
         Ref<ast::FunctionPrototype> prototype = FunctionPrototype();
@@ -264,7 +264,7 @@ namespace scar {
 
         Ref<ast::Type> retType;
         if (*m_Token != Token::RArrow) {
-            retType = MakeRef<ast::Type>(ast::Type::Void, ident.GetSpan());
+            retType = MakeRef<ast::Type>(ast::TypeInfo::Void, ident.GetSpan());
         }
         else {
             Expect({ Token::RArrow });
@@ -379,7 +379,7 @@ namespace scar {
         TextPosition start = m_Token->GetTextPos();
 
         Expect({ Token::Loop });
-        Ref<ast::LiteralFloat> cond = MakeRef<ast::LiteralFloat>(1.0, ast::Type::F64, m_Token->Span);
+        Ref<ast::LiteralFloat> cond = MakeRef<ast::LiteralFloat>(1.0, ast::TypeInfo::F64, m_Token->Span);
         Ref<ast::Block> block = Block();
 
         return MakeRef<ast::WhileLoop>(cond, block, GetSpanFrom(start));
@@ -505,11 +505,11 @@ namespace scar {
                 atom = MakeRef<ast::FunctionCall>(ident, args, GetSpanFrom(start));
             }
             else {
-                atom = MakeRef<ast::Variable>(ident, ident.GetSpan());
+                atom = MakeRef<ast::VarAccess>(ident, ident.GetSpan());
             }
             break;
         }
-        case Token::Var: return Var();
+        case Token::Var: return VarDecl();
         case Token::True:
             atom = MakeRef<ast::LiteralBool>(true, GetSpanFrom(start));
             Bump();
@@ -549,7 +549,7 @@ namespace scar {
         return atom;
     }
 
-    Ref<ast::Var> Parser::Var() {
+    Ref<ast::VarDecl> Parser::VarDecl() {
         TextPosition start = m_Token->GetTextPos();
 
         Expect({ Token::Var });
@@ -557,20 +557,7 @@ namespace scar {
         Expect({ Token::Colon });
         Ref<ast::Type> type = Type();
 
-        Ref<ast::Expr> lhs = MakeRef<ast::Variable>(ident, ident.GetSpan());
-        Ref<ast::BinaryOperator> assign;
-        if (*m_Token == Token::Assign) {
-            TextPosition s = m_Token->GetTextPos();
-            Expect({ Token::Assign });
-            Ref<ast::Expr> rhs = Expr();
-            assign = MakeRef<ast::BinaryOperator>(ast::BinaryOperator::Assign, lhs, rhs, GetSpanFrom(s));
-        }
-        else {
-            Ref<ast::Expr> rhs = MakeRef<ast::LiteralFloat>(0.0, ast::Type::F64, ident.GetSpan());
-            assign = MakeRef<ast::BinaryOperator>(ast::BinaryOperator::Assign, lhs, rhs, ident.GetSpan());
-        }
-
-        return MakeRef<ast::Var>(ident, type, assign, GetSpanFrom(start));
+        return MakeRef<ast::VarDecl>(ident, type, GetSpanFrom(start));
     }
 
     // prefix_op : + -

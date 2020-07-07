@@ -12,7 +12,7 @@ namespace scar {
         // TYPE
 
         void PrintVisitor::Visit(Type& node) {
-            PRINT_LEAF("Type {}", node.ValType);
+            PRINT_LEAF("Type {}", node.ResultType);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -37,12 +37,16 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(FunctionPrototype& node) {
-            PRINT_BRANCH("FunctionPrototype {} \"{}\"({})", node.ReturnType->ValType, node.Name, node.Name.StringID);
+            PRINT_BRANCH("FunctionPrototype {} \"{}\"({})", node.ReturnType->ResultType, node.Name, node.Name.StringID);
             m_IndentCount++;
             for (auto& arg : node.Args) {
-                PRINT_LEAF("Arg {} \"{}\"({})", arg.VarType->ValType, arg.Name, arg.Name.StringID);
+                PRINT_LEAF("Arg {} \"{}\"({})", arg.VarType->ResultType, arg.Name, arg.Name.StringID);
             }
             m_IndentCount--;
+        }
+
+        void PrintVisitor::Visit(VarDecl& node) {
+            PRINT_BRANCH("VarDecl {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -107,7 +111,7 @@ namespace scar {
         // EXPRESSIONS
 
         void PrintVisitor::Visit(FunctionCall& node) {
-            PRINT_BRANCH("FunctionCall {} \"{}\"({})", node.ValueType, node.Name, node.Name.StringID);
+            PRINT_BRANCH("FunctionCall {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
             m_IndentCount++;
             for (auto& arg : node.Args) {
                 arg->Accept(*this);
@@ -115,15 +119,15 @@ namespace scar {
             m_IndentCount--;
         }
 
-        void PrintVisitor::Visit(Var& node) {
-            PRINT_BRANCH("Var {} \"{}\"({})", node.ValueType, node.Name, node.Name.StringID);
-            m_IndentCount++;
-            node.Assign->RHS->Accept(*this);
-            m_IndentCount--;
+        void PrintVisitor::Visit(VarAccess& node) {
+            PRINT_LEAF("VarAccess {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
         }
 
-        void PrintVisitor::Visit(Variable& node) {
-            PRINT_LEAF("Variable {} \"{}\"({})", node.ValueType, node.Name, node.Name.StringID);
+        void PrintVisitor::Visit(Cast& node) {
+            PRINT_LEAF("Cast {}", node.ResultType);
+            m_IndentCount++;
+            node.LHS->Accept(*this);
+            m_IndentCount--;
         }
 
         ///////////////////////////////////////////////////////////////////////

@@ -13,6 +13,7 @@ namespace scar {
             void Visit(Module& node) override;
             void Visit(Function& node) override;
             void Visit(FunctionPrototype& node) override;
+            void Visit(VarDecl& node) override;
 
             void Visit(Branch& node) override;
             void Visit(ForLoop& node) override;
@@ -23,8 +24,8 @@ namespace scar {
             void Visit(Return& node) override;
 
             void Visit(FunctionCall& node) override;
-            void Visit(Var& node) override;
-            void Visit(Variable& node) override;
+            void Visit(VarAccess& node) override;
+            void Visit(Cast& node) override;
 
             void Visit(PrefixOperator& node) override;
             void Visit(SuffixOperator& node) override;
