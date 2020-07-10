@@ -22,8 +22,8 @@ namespace scar {
             auto ast = parser.Parse();
 
             if (Session::IsGood()) {
-                ast::TypeCheckVisitor typeCheck;
-                ast->Accept(typeCheck);
+                ast::VerifyVisitor verify;
+                ast->Accept(verify);
             }
 
             if (Session::IsGood()) {

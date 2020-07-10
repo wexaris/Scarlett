@@ -49,7 +49,7 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // TYPE
 
-        void TypeCheckVisitor::Visit(Type& node) {
+        void VerifyVisitor::Visit(Type& node) {
 
         }
 
@@ -57,13 +57,13 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // DECLARATIONS
 
-        void TypeCheckVisitor::Visit(Module& node) {
+        void VerifyVisitor::Visit(Module& node) {
             for (auto& item : node.Items) {
                 item->Accept(*this);
             }
         }
 
-        void TypeCheckVisitor::Visit(Function& node) {
+        void VerifyVisitor::Visit(Function& node) {
             s_Data.Symbols.PushScope();
             node.Prototype->Accept(*this);
 
@@ -74,7 +74,7 @@ namespace scar {
             s_Data.Symbols.PopScope();
         }
 
-        void TypeCheckVisitor::Visit(FunctionPrototype& node) {
+        void VerifyVisitor::Visit(FunctionPrototype& node) {
             TypeInfo type = node.ReturnType->ResultType;
             s_Data.Symbols.Add(node.Name, type);
 
@@ -83,7 +83,7 @@ namespace scar {
             }
         }
 
-        void TypeCheckVisitor::Visit(VarDecl& node) {
+        void VerifyVisitor::Visit(VarDecl& node) {
             node.VarType->Accept(*this);
             if (node.ResultType.IsVoid()) {
                 SPAN_ERROR("invalid void type variable", node.VarType->GetSpan());
@@ -95,25 +95,25 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // STATEMENTS
 
-        void TypeCheckVisitor::Visit(Branch& node) {
+        void VerifyVisitor::Visit(Branch& node) {
             node.Condition->Accept(*this);
             node.TrueBlock->Accept(*this);
             node.FalseBlock->Accept(*this);
         }
 
-        void TypeCheckVisitor::Visit(ForLoop& node) {
+        void VerifyVisitor::Visit(ForLoop& node) {
             node.Init->Accept(*this);
             node.Condition->Accept(*this);
             node.Update->Accept(*this);
             node.CodeBlock->Accept(*this);
         }
 
-        void TypeCheckVisitor::Visit(WhileLoop& node) {
+        void VerifyVisitor::Visit(WhileLoop& node) {
             node.Condition->Accept(*this);
             node.CodeBlock->Accept(*this);
         }
 
-        void TypeCheckVisitor::Visit(Block& node) {
+        void VerifyVisitor::Visit(Block& node) {
             s_Data.Symbols.PushScope();
             for (auto& item : node.Items) {
                 item->Accept(*this);
@@ -121,15 +121,15 @@ namespace scar {
             s_Data.Symbols.PopScope();
         }
 
-        void TypeCheckVisitor::Visit(Continue& node) {
+        void VerifyVisitor::Visit(Continue& node) {
 
         }
 
-        void TypeCheckVisitor::Visit(Break& node) {
+        void VerifyVisitor::Visit(Break& node) {
 
         }
 
-        void TypeCheckVisitor::Visit(Return& node) {
+        void VerifyVisitor::Visit(Return& node) {
             node.Value->Accept(*this);
             if (node.Value->ResultType != s_Data.CurrentFunction->ReturnType->ResultType) {
                 SPAN_ERROR("return value does not match function type", node.GetSpan());
@@ -140,7 +140,7 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // EXPRESSIONS
 
-        void TypeCheckVisitor::Visit(FunctionCall& node) {
+        void VerifyVisitor::Visit(FunctionCall& node) {
             TypeInfo type = s_Data.Symbols.Find(node.Name);
             // TODO: Verify function argument count and types match called function
 
@@ -150,7 +150,7 @@ namespace scar {
             node.ResultType = type;
         }
 
-        void TypeCheckVisitor::Visit(VarAccess& node) {
+        void VerifyVisitor::Visit(VarAccess& node) {
             TypeInfo type = s_Data.Symbols.Find(node.Name);
             if (!type.IsValid()) {
                 SPAN_ERROR(FMT("undeclared variable: {}", node.Name), node.GetSpan());
@@ -162,7 +162,7 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // OPERATORS
 
-        void TypeCheckVisitor::Visit(PrefixOperator& node) {
+        void VerifyVisitor::Visit(PrefixOperator& node) {
             node.RHS->Accept(*this);
             TypeInfo rhsType = node.RHS->ResultType;
 
@@ -210,7 +210,7 @@ namespace scar {
             }
         }
 
-        void TypeCheckVisitor::Visit(SuffixOperator& node) {
+        void VerifyVisitor::Visit(SuffixOperator& node) {
             node.LHS->Accept(*this);
             TypeInfo lhsType = node.LHS->ResultType;
 
@@ -238,7 +238,7 @@ namespace scar {
             }
         }
 
-        void TypeCheckVisitor::Visit(BinaryOperator& node) {
+        void VerifyVisitor::Visit(BinaryOperator& node) {
             if (node.Type == BinaryOperator::Assign) {
                 node.LHS->Accept(*this);
                 node.ResultType = node.LHS->ResultType;
@@ -328,19 +328,19 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // LITERALS
 
-        void TypeCheckVisitor::Visit(LiteralBool& node) {
+        void VerifyVisitor::Visit(LiteralBool& node) {
 
         }
 
-        void TypeCheckVisitor::Visit(LiteralInteger& node) {
+        void VerifyVisitor::Visit(LiteralInteger& node) {
 
         }
 
-        void TypeCheckVisitor::Visit(LiteralFloat& node) {
+        void VerifyVisitor::Visit(LiteralFloat& node) {
 
         }
 
-        void TypeCheckVisitor::Visit(LiteralString& node) {
+        void VerifyVisitor::Visit(LiteralString& node) {
 
         }
 

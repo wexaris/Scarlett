@@ -4,11 +4,9 @@
 namespace scar {
     namespace ast {
 
-        struct VisitorData;
-
-        class TypeCheckVisitor : public Visitor {
+        class VerifyVisitor : public Visitor {
         public:
-            TypeCheckVisitor() = default;
+            VerifyVisitor() = default;
 
             void Visit(Type& node) override;
 
