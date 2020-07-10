@@ -37,41 +37,6 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // VISITOR
 
-        /*class LLVMVisitorSymbolTable {
-        public:
-            struct Symbol {
-                llvm::AllocaInst* Alloca;
-                llvm::Type* Type;
-                llvm::StringRef Name;
-            };
-
-            LLVMVisitorSymbolTable() {
-                PushScope();
-            }
-
-            void Add(const Ident& name, llvm::AllocaInst* symbol) { Add(name.GetString(), symbol); }
-            void Add(const std::string& name, llvm::AllocaInst* symbol) {
-                m_Symbols.back()[name] = Symbol{ symbol, symbol->getType(), symbol->getName() };
-            }
-
-            void PushScope() { m_Symbols.push_back({}); }
-            void PopScope() { m_Symbols.pop_back(); }
-
-            const Symbol& Find(const Ident& name) const { return Find(name.GetString()); }
-            const Symbol& Find(const std::string& name) const {
-                for (auto iter = m_Symbols.rbegin(); iter != m_Symbols.rend(); iter++) {
-                    auto item = iter->find(name);
-                    if (item != iter->end()) {
-                        return item->second;
-                    }
-                }
-                SCAR_CRITICAL("Symbol '{}' not found in SymbolTable!", name);
-            }
-
-        private:
-            std::vector<std::unordered_map<std::string, Symbol>> m_Symbols;
-        };*/
-
         struct LLVMVisitorSymbol {
             llvm::AllocaInst* Alloca;
             llvm::Type* Type;

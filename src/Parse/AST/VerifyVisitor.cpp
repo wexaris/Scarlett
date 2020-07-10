@@ -33,7 +33,7 @@ namespace scar {
             VerifyVisitorSymbolTable Symbols;
             FunctionPrototype* CurrentFunction;
         };
-        static VerifyVisitorData s_Data{};
+        static VerifyVisitorData s_Data;
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
