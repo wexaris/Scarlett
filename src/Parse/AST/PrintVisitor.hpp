@@ -34,11 +34,6 @@ namespace scar {
             void Visit(LiteralInteger& node) override;
             void Visit(LiteralFloat& node) override;
             void Visit(LiteralString& node) override;
-
-        private:
-            unsigned int m_IndentCount = 0;
-
-            std::string GetIndent() const { return std::string(m_IndentCount, ' '); }
         };
 
     }
