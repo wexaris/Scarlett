@@ -20,6 +20,7 @@ namespace scar {
         { "continue", Token::Continue },
         { "break",    Token::Break },
         { "return",   Token::Return },
+        { "as",       Token::As },
 
         { "true",  Token::True },
         { "false", Token::False },

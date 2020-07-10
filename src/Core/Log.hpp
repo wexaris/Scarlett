@@ -2,9 +2,10 @@
 #include "Core/Session.hpp"
 #include "Core/Error.hpp"
 
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/fmt.h>
-#include <spdlog/fmt/ostr.h>
 
 namespace scar {
 

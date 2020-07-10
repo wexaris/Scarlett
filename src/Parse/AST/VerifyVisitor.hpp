@@ -27,7 +27,6 @@ namespace scar {
 
             void Visit(FunctionCall& node) override;
             void Visit(VarAccess& node) override;
-            void Visit(Cast& node) override;
 
             void Visit(PrefixOperator& node) override;
             void Visit(SuffixOperator& node) override;

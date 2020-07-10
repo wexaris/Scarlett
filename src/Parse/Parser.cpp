@@ -55,6 +55,8 @@ namespace scar {
             Precedence(prec),
             Associativity(assoc) {
         }
+
+        bool IsCast() { return TokenType == Token::As; }
     };
 
     static OperatorInfo GetPrefixOperatorInfo(Token::TokenType type) {
@@ -74,6 +76,7 @@ namespace scar {
         switch (type) {
         case Token::PlusPlus:   return OperatorInfo(Token::PlusPlus,   13, OperatorInfo::Left);
         case Token::MinusMinus: return OperatorInfo(Token::MinusMinus, 13, OperatorInfo::Left);
+        case Token::As:         return OperatorInfo(Token::As, 11, OperatorInfo::Left);
         default:
             SCAR_BUG("missing suffix OperatorInfo for Token::Type {}", (int)type);
             return OperatorInfo();
@@ -82,11 +85,11 @@ namespace scar {
     static OperatorInfo GetBinaryOperatorInfo(Token::TokenType type) {
         switch (type) {
         case Token::Dot:       return OperatorInfo(type, 13, OperatorInfo::Left);
-        case Token::Star:      return OperatorInfo(type, 11, OperatorInfo::Left);
-        case Token::Slash:     return OperatorInfo(type, 11, OperatorInfo::Left);
-        case Token::Percent:   return OperatorInfo(type, 11, OperatorInfo::Left);
-        case Token::Plus:      return OperatorInfo(type, 10, OperatorInfo::Left);
-        case Token::Minus:     return OperatorInfo(type, 10, OperatorInfo::Left);
+        case Token::Star:      return OperatorInfo(type, 10, OperatorInfo::Left);
+        case Token::Slash:     return OperatorInfo(type, 10, OperatorInfo::Left);
+        case Token::Percent:   return OperatorInfo(type, 10, OperatorInfo::Left);
+        case Token::Plus:      return OperatorInfo(type, 9, OperatorInfo::Left);
+        case Token::Minus:     return OperatorInfo(type, 9, OperatorInfo::Left);
         case Token::Greater:   return OperatorInfo(type, 8, OperatorInfo::Left);
         case Token::GreaterEq: return OperatorInfo(type, 8, OperatorInfo::Left);
         case Token::Lesser:    return OperatorInfo(type, 8, OperatorInfo::Left);
@@ -174,15 +177,19 @@ namespace scar {
     ///////////////////////////////////////////////////////////////////////////
     // TYPE
 
+    Token& Parser::ExpectTypeToken() {
+        return Expect({ Token::Bool,
+            Token::I8, Token::I16, Token::I32, Token::I64,
+            Token::U8, Token::U16, Token::U32, Token::U64,
+            Token::F32, Token::F64 });
+    }
+
     // type : BOOL
     //      | I8 I16 I32 I64
     //      | U8 U16 U32 U64
     //      | F32 F64
     Ref<ast::Type> Parser::Type() {
-        Token& token = Expect({ Token::Bool,
-            Token::I8, Token::I16, Token::I32, Token::I64,
-            Token::U8, Token::U16, Token::U32, Token::U64,
-            Token::F32, Token::F64 });
+        Token& token = ExpectTypeToken();
         return MakeRef<ast::Type>((ast::TypeInfo)token.Type, token.Span);
     }
 
@@ -541,8 +548,17 @@ namespace scar {
             OperatorInfo opInfo = GetSuffixOperatorInfo(m_Token->Type);
             if (opInfo.Precedence >= prec) {
                 Bump();
-
-                return MakeRef<ast::SuffixOperator>(ASTSuffixOp(opInfo.TokenType), atom, GetSpanFrom(start));
+                // Suffix operators also include type casts (x as i32),
+                // so we get the SuffixOp type and check if it's a cast.
+                // If it is, we expect the next token to be a type.
+                // We pass this type to the ast::SuffixOperator as the
+                // expression's result type.
+                ast::SuffixOperator::OpType suffixOp = ASTSuffixOp(opInfo.TokenType);
+                if (suffixOp == ast::SuffixOperator::Cast) {
+                    ast::TypeInfo targetType = ASTType(ExpectTypeToken().Type);
+                    return MakeRef<ast::SuffixOperator>(suffixOp, atom, targetType, GetSpanFrom(start));
+                }
+                return MakeRef<ast::SuffixOperator>(suffixOp, atom, GetSpanFrom(start));
             }
         }
 
@@ -573,7 +589,7 @@ namespace scar {
     // suffix_op : ++ --
     bool Parser::IsSuffixOperator() const {
         return Match({
-            Token::PlusPlus, Token::MinusMinus });
+            Token::PlusPlus, Token::MinusMinus, Token::As });
     }
 
     // binary_op : + - * / %

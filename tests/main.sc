@@ -7,7 +7,7 @@ func test(foo f64) -> f64;
 
 func main(x f64) -> f64 {
     ;
-    var y: i32 = 1;
+    var y: f64 = 1 as f64;
     loop {
         if (x + y != 0.0) {
             break;

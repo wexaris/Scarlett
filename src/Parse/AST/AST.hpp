@@ -30,7 +30,6 @@ namespace scar {
 
             virtual void Visit(class FunctionCall& node) = 0;
             virtual void Visit(class VarAccess& node) = 0;
-            virtual void Visit(class Cast& node) = 0;
 
             virtual void Visit(class PrefixOperator& node) = 0;
             virtual void Visit(class SuffixOperator& node) = 0;
@@ -46,34 +45,54 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // TYPE
 
-        enum class TypeInfo {
-            Unknown = -1,
-            Void = 0,
+        struct TypeInfo {
+            enum Ty {
+                Invalid = Token::Invalid,
+                Void = Token::Void,
 
-            Bool = Token::Bool,
+                Bool = Token::Bool,
 
-            I8 = Token::I8,
-            I16 = Token::I16,
-            I32 = Token::I32,
-            I64 = Token::I64,
-            U8 = Token::U8,
+                I8 = Token::I8,
+                I16 = Token::I16,
+                I32 = Token::I32,
+                I64 = Token::I64,
 
-            U16 = Token::U16,
-            U32 = Token::U32,
-            U64 = Token::U64,
+                U8 = Token::U8,
+                U16 = Token::U16,
+                U32 = Token::U32,
+                U64 = Token::U64,
 
-            F32 = Token::F32,
-            F64 = Token::F64,
+                F32 = Token::F32,
+                F64 = Token::F64,
 
-            Char = Token::Char,
-            String = Token::String
+                Char = Token::Char,
+                String = Token::String
+            } Type = Invalid;
+
+            TypeInfo() = default;
+            TypeInfo(TypeInfo::Ty type) : Type(type) {}
+            explicit TypeInfo(Token::TokenType type) : Type((TypeInfo::Ty)type) {}
+
+            operator TypeInfo::Ty() const { return Type; }
+            
+            bool IsValid() const    { return Type != Invalid; }
+            bool IsVoid() const     { return Type == Void; }
+            bool IsBool() const     { return Type == Bool; }
+            bool IsInt() const      { return IsSInt() || IsUInt(); }
+            bool IsSInt() const     { return Type == I8 || Type == I16 || Type == I32 || Type == I64; }
+            bool IsUInt() const     { return Type == U8 || Type == U16 || Type == U32 || Type == U64; }
+            bool IsFloat() const    { return Type == F32 || Type == F64; }
+            bool IsChar() const     { return Type == Char; }
+            bool IsString() const   { return Type == String; }
         };
 
         static std::ostream& operator<<(std::ostream& os, TypeInfo type) {
-            if (type == TypeInfo::Unknown) {
+            if (!type.IsValid())
                 return os << "<unknown>";
-            }
-            return os << (Token::TokenType)type;
+            return os << (Token::TokenType)type.Type;
+        }
+        static std::ostream& operator<<(std::ostream& os, TypeInfo::Ty type) {
+            return os << TypeInfo(type);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -250,7 +269,7 @@ namespace scar {
             Ident Name;
             std::vector<Ref<Expr>> Args;
             FunctionCall(const Ident& name, const std::vector<Ref<Expr>>& args, const TextSpan& span) :
-                Expr(TypeInfo::Unknown, span), Name(name), Args(args) {}
+                Expr(TypeInfo::Invalid, span), Name(name), Args(args) {}
         };
 
         class VarAccess : public Expr {
@@ -258,16 +277,7 @@ namespace scar {
         public:
             Ident Name;
             VarAccess(const Ident& name, const TextSpan& span) :
-                Expr(TypeInfo::Unknown, span), Name(name) {}
-        };
-
-        class Cast : public Expr {
-            SCAR_GENERATE_NODE;
-        public:
-            Ref<Expr> LHS;
-            Cast(const Ref<Expr>& lhs, TypeInfo resultType, const TextSpan& span) :
-                Expr(resultType, span), LHS(lhs) {
-            }
+                Expr(TypeInfo::Invalid, span), Name(name) {}
         };
 
         ///////////////////////////////////////////////////////////////////////
@@ -288,8 +298,8 @@ namespace scar {
 
             const OpType Type;
             Ref<Expr> RHS;
-            PrefixOperator(OpType type, const Ref<Expr>& expr, const TextSpan& span) :
-                Expr(TypeInfo::Unknown, span), Type(type), RHS(expr) {}
+            PrefixOperator(PrefixOperator::OpType type, const Ref<Expr>& expr, const TextSpan& span) :
+                Expr(TypeInfo::Invalid, span), Type(type), RHS(expr) {}
         };
 
         class SuffixOperator : public Expr {
@@ -298,12 +308,16 @@ namespace scar {
             enum OpType {
                 Increment = Token::PlusPlus,
                 Decrement = Token::MinusMinus,
+                Cast      = Token::As,
             };
 
             const OpType Type;
             Ref<Expr> LHS;
-            SuffixOperator(OpType type, const Ref<Expr>& expr, const TextSpan& span) :
-                Expr(TypeInfo::Unknown, span), Type(type), LHS(expr) {}
+            SuffixOperator(SuffixOperator::OpType type, const Ref<Expr>& expr, TypeInfo resultType, const TextSpan& span) :
+                Expr(resultType, span), Type(type), LHS(expr) {}
+            SuffixOperator(SuffixOperator::OpType type, const Ref<Expr>& expr, const TextSpan& span) :
+                SuffixOperator(type, expr, TypeInfo::Invalid, span) {}
+            
         };
 
         class BinaryOperator : public Expr {
@@ -333,8 +347,8 @@ namespace scar {
             const OpType Type;
             Ref<Expr> LHS;
             Ref<Expr> RHS;
-            BinaryOperator(OpType type, const Ref<Expr>& lhs, const Ref<Expr>& rhs, const TextSpan& span) :
-                Expr(TypeInfo::Unknown, span), Type(type), LHS(lhs), RHS(rhs) {}
+            BinaryOperator(BinaryOperator::OpType type, const Ref<Expr>& lhs, const Ref<Expr>& rhs, const TextSpan& span) :
+                Expr(TypeInfo::Invalid, span), Type(type), LHS(lhs), RHS(rhs) {}
         };
 
         static std::ostream& operator<<(std::ostream& os, PrefixOperator::OpType opType) {
@@ -386,3 +400,13 @@ namespace scar {
 
     }
 }
+
+template <>
+struct fmt::formatter<scar::ast::TypeInfo> {
+    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const scar::ast::TypeInfo& type, FormatContext& ctx) {
+        return fmt::format_to(ctx.out(), "{}", (scar::Token::TokenType)type.Type);
+    }
+};

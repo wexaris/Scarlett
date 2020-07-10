@@ -10,8 +10,8 @@ set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(LIB_NAME ${prefix}${PROJ}${dsuffix}${suffix})
 
 ExternalProject_Add(${PROJ}_proj
-    PREFIX      "${CMAKE_CURRENT_BINARY_DIR}/${PROJ}"
-    SOURCE_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/${PROJ}"
+    PREFIX     "${CMAKE_CURRENT_BINARY_DIR}/${PROJ}"
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${PROJ}"
     CMAKE_ARGS
         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
@@ -30,7 +30,7 @@ ExternalProject_Add(${PROJ}_proj
     BUILD_BYPRODUCTS ${LIB_DIR}/${LIB_NAME}
 )
 
-set(INCL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${PROJ})
+set(INCL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${PROJ}/include)
 
 add_library(${PROJ} STATIC IMPORTED GLOBAL)
 add_dependencies(${PROJ} ${PROJ}_proj)

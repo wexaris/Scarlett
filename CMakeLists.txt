@@ -22,6 +22,8 @@ set(SCAR_SRC
     src/Core/Session.cpp
     src/Core/Log.cpp
     src/Parse/Parser.cpp
+    src/Parse/Interner.cpp
+    src/Parse/Token.cpp
     src/Parse/AST/LLVMVisitor.cpp
     src/Parse/AST/VerifyVisitor.cpp
     src/Parse/AST/PrintVisitor.cpp
@@ -29,7 +31,6 @@ set(SCAR_SRC
     src/Parse/Lex/UTFReader.cpp
     src/Parse/Lex/SourceFile.cpp
     src/Parse/Lex/Codepoint.cpp
-    src/Parse/Interner.cpp
 )
 
 set(SCAR_PCH src/scarpch.hpp)
@@ -37,7 +38,7 @@ set(SCAR_PCH src/scarpch.hpp)
 add_executable(scar ${SCAR_SRC})
 target_precompile_headers(scar PRIVATE ${SCAR_PCH})
 
-target_link_libraries(scar PUBLIC ${LLVM_LIBS} spdlog fmt)
+target_link_libraries(scar PUBLIC ${LLVM_LIBS} fmt spdlog)
 target_compile_definitions(scar PUBLIC ${LLVM_DEFINITIONS})
 target_include_directories(scar PUBLIC src/ SYSTEM ${LLVM_INCLUDE_DIRS})
 

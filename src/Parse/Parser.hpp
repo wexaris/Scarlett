@@ -51,6 +51,7 @@ namespace scar {
         Ref<ast::Expr> Expr(unsigned int prec = 1, bool allowEmpty = false);
         Ref<ast::Expr> ExprAtom(unsigned int prec, bool allowEmpty = false);
 
+        Token& ExpectTypeToken();
         bool IsPrefixOperator() const;
         bool IsSuffixOperator() const;
         bool IsBinaryOperator() const;

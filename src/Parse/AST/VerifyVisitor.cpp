@@ -8,52 +8,6 @@ namespace scar {
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
-        // MISCELANEOUS
-
-        static bool IsUnknown(TypeInfo type) {
-            return type == TypeInfo::Unknown;
-        }
-
-        static bool IsVoid(TypeInfo type) {
-            return type == TypeInfo::Void;
-        }
-
-        static bool IsBool(TypeInfo type) {
-            return type == TypeInfo::Bool;
-        }
-
-        static bool IsSInt(TypeInfo type) {
-            return type == TypeInfo::I8 ||
-                type == TypeInfo::I16 ||
-                type == TypeInfo::I32 ||
-                type == TypeInfo::I64;
-        }
-
-        static bool IsUInt(TypeInfo type) {
-            return type == TypeInfo::U8 ||
-                type == TypeInfo::U16 ||
-                type == TypeInfo::U32 ||
-                type == TypeInfo::U64;
-        }
-
-        static bool IsInt(TypeInfo type) {
-            return IsSInt(type) || IsUInt(type);
-        }
-
-        static bool IsFloat(TypeInfo type) {
-            return type == TypeInfo::F32 || type == TypeInfo::F64;
-        }
-
-        static bool IsChar(TypeInfo type) {
-            return type == TypeInfo::Char;
-        }
-
-        static bool IsString(TypeInfo type) {
-            return type == TypeInfo::String;
-        }
-
-        ///////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////
         // VISITOR
 
         class SymbolTable {
@@ -78,7 +32,7 @@ namespace scar {
                         return item->second;
                     }
                 }
-                return TypeInfo::Unknown;
+                return TypeInfo::Invalid;
             }
 
         private:
@@ -131,7 +85,7 @@ namespace scar {
 
         void TypeCheckVisitor::Visit(VarDecl& node) {
             node.VarType->Accept(*this);
-            if (IsVoid(node.ResultType)) {
+            if (node.ResultType.IsVoid()) {
                 SPAN_ERROR("invalid void type variable", node.VarType->GetSpan());
             }
             s_Data.Symbols.Add(node.Name, node.ResultType);
@@ -198,14 +152,10 @@ namespace scar {
 
         void TypeCheckVisitor::Visit(VarAccess& node) {
             TypeInfo type = s_Data.Symbols.Find(node.Name);
-            if (type == TypeInfo::Unknown) {
+            if (!type.IsValid()) {
                 SPAN_ERROR(FMT("undeclared variable: {}", node.Name), node.GetSpan());
             }
             node.ResultType = type;
-        }
-
-        void TypeCheckVisitor::Visit(Cast& node) {
-
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -216,30 +166,33 @@ namespace scar {
             node.RHS->Accept(*this);
             TypeInfo rhsType = node.RHS->ResultType;
             
-            if (IsUnknown(rhsType)) {
+            if (!rhsType.IsValid()) {
                 return;
             }
-            if (IsVoid(rhsType)) {
+            if (rhsType.IsVoid()) {
                 SPAN_ERROR("invalid expression type", node.GetSpan());
                 return;
             }
 
             switch (node.Type) {
-            case PrefixOperator::Plus:  [[fallthrough]];
+            case PrefixOperator::Plus: [[fallthrough]];
             case PrefixOperator::Minus:
-                if (IsInt(rhsType) || IsFloat(rhsType)) { node.ResultType = rhsType; }
+                if (rhsType.IsInt() || rhsType.IsFloat())
+                    node.ResultType = rhsType;
                 else {
                     SPAN_ERROR(FMT("prefix operator {} not defined for {} type", node.Type, node.RHS->ResultType), node.GetSpan());
                 }
                 break;
             case PrefixOperator::Not:
-                if (IsBool(rhsType)) { node.ResultType = rhsType; }
+                if (rhsType.IsBool())
+                    node.ResultType = rhsType;
                 else {
                     SPAN_ERROR(FMT("prefix operator {} not defined for {} type", node.Type, node.RHS->ResultType), node.GetSpan());
                 }
                 break;
             case PrefixOperator::BitNot:
-                if (IsBool(rhsType) || IsInt(rhsType) || IsFloat(rhsType)) { node.ResultType = rhsType; }
+                if (rhsType.IsBool() || rhsType.IsInt() || rhsType.IsInt())
+                    node.ResultType = rhsType;
                 else {
                     SPAN_ERROR(FMT("prefix operator {} not defined for {} type", node.Type, node.RHS->ResultType), node.GetSpan());
                 }
@@ -252,7 +205,7 @@ namespace scar {
                 break;
 
             default:
-                SCAR_BUG("missing Type::VariableType for PrefixOperator {}", node.Type);
+                SCAR_BUG("missing verification for PrefixOperator {} node", node.Type);
                 break;
             }
         }
@@ -261,10 +214,10 @@ namespace scar {
             node.LHS->Accept(*this);
             TypeInfo lhsType = node.LHS->ResultType;
 
-            if (IsUnknown(lhsType)) {
+            if (!lhsType.IsValid()) {
                 return;
             }
-            if (IsVoid(lhsType)) {
+            if (lhsType.IsVoid()) {
                 SPAN_ERROR("invalid expression type", node.GetSpan());
                 return;
             }
@@ -276,9 +229,11 @@ namespace scar {
             case SuffixOperator::Decrement:
                 SCAR_BUG("SuffixOperator::Decrement not implemented");
                 break;
+            case SuffixOperator::Cast:
+                break;
 
             default:
-                SCAR_BUG("missing Type::VariableType for SuffixOperator {}", node.Type);
+                SCAR_BUG("missing verification for SuffixOperator {} node", node.Type);
                 break;
             }
         }
@@ -310,10 +265,9 @@ namespace scar {
             TypeInfo lhsType = node.LHS->ResultType;
             TypeInfo rhsType = node.RHS->ResultType;
 
-            if (IsUnknown(lhsType) || IsUnknown(rhsType)) {
+            if (!lhsType.IsValid() || !rhsType.IsValid())
                 return;
-            }
-            if (IsVoid(lhsType) || IsVoid(rhsType)) {
+            if (lhsType.IsVoid() || rhsType.IsVoid()) {
                 SPAN_ERROR("invalid expression type", node.GetSpan());
                 return;
             }
@@ -327,7 +281,7 @@ namespace scar {
             case BinaryOperator::Remainder: [[fallthrough]];
             case BinaryOperator::Plus:      [[fallthrough]];
             case BinaryOperator::Minus:
-                if (IsInt(lhsType) || IsFloat(lhsType)) { node.ResultType = lhsType; }
+                if (lhsType.IsInt() || lhsType.IsFloat()) { node.ResultType = lhsType; }
                 else {
                     SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
                 }
@@ -336,14 +290,14 @@ namespace scar {
             case BinaryOperator::GreaterEq: [[fallthrough]];
             case BinaryOperator::Lesser:    [[fallthrough]];
             case BinaryOperator::LesserEq:
-                if (IsBool(lhsType)) { node.ResultType = lhsType; }
+                if (lhsType.IsBool()) { node.ResultType = lhsType; }
                 else {
                     SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
                 }
                 break;
             case BinaryOperator::Eq:        [[fallthrough]];
             case BinaryOperator::NotEq:
-                if (IsBool(rhsType) || IsInt(rhsType) || IsFloat(rhsType)) { node.ResultType = lhsType; }
+                if (rhsType.IsBool() || rhsType.IsInt() || rhsType.IsFloat()) { node.ResultType = lhsType; }
                 else {
                     SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
                 }
@@ -351,21 +305,21 @@ namespace scar {
             case BinaryOperator::BitAnd:    [[fallthrough]];
             case BinaryOperator::BitXOr:    [[fallthrough]];
             case BinaryOperator::BitOr:
-                if (IsBool(rhsType) || IsInt(rhsType) || IsFloat(rhsType)) { node.ResultType = lhsType; }
+                if (rhsType.IsBool() || rhsType.IsInt() || rhsType.IsFloat()) { node.ResultType = lhsType; }
                 else {
                     SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
                 }
                 break;
             case BinaryOperator::LogicAnd:  [[fallthrough]];
             case BinaryOperator::LogicOr:
-                if (IsBool(lhsType)) { node.ResultType = lhsType; }
+                if (lhsType.IsBool()) { node.ResultType = lhsType; }
                 else {
                     SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
                 }
                 break;
 
             default:
-                SCAR_BUG("missing Type::VariableType for BinaryOperator {}", node.Type);
+                SCAR_BUG("missing verification for BinaryOperator {} node", node.Type);
                 break;
             }
         }

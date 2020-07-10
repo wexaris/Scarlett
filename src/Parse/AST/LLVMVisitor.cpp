@@ -34,26 +34,88 @@ namespace scar {
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
+        // SUPPORT
+
+        class SymbolTable {
+        public:
+            struct Symbol {
+                llvm::AllocaInst* Alloca;
+                llvm::Type* Type;
+                llvm::StringRef Name;
+            };
+
+            SymbolTable() {
+                PushScope();
+            }
+
+            void Add(const Ident& name, llvm::AllocaInst* symbol) { Add(name.GetString(), symbol); }
+            void Add(const std::string& name, llvm::AllocaInst* symbol) {
+                m_Symbols.back()[name] = Symbol{ symbol, symbol->getType(), symbol->getName() };
+            }
+
+            void PushScope() { m_Symbols.push_back({}); }
+            void PopScope() { m_Symbols.pop_back(); }
+
+            const Symbol& Find(const Ident& name) const { return Find(name.GetString()); }
+            const Symbol& Find(const std::string& name) const {
+                for (auto iter = m_Symbols.rbegin(); iter != m_Symbols.rend(); iter++) {
+                    auto item = iter->find(name);
+                    if (item != iter->end()) {
+                        return item->second;
+                    }
+                }
+                SCAR_CRITICAL("Symbol '{}' not found in SymbolTable!", name);
+            }
+
+        private:
+            std::vector<std::unordered_map<std::string, Symbol>> m_Symbols;
+        };
+
+        struct LoopBlocks {
+            llvm::BasicBlock* Header;
+            llvm::BasicBlock* Exit;
+            LoopBlocks(llvm::BasicBlock* header, llvm::BasicBlock* exit) : Header(header), Exit(exit) {}
+        };
+
+        struct LLVMVisitorData {
+            llvm::LLVMContext Context;
+            Scope<llvm::IRBuilder<>> Builder;
+            Scope<llvm::legacy::FunctionPassManager> FunctionPassManager;
+            Scope<llvm::Module> Module;
+
+            SymbolTable Symbols;
+            std::vector<LoopBlocks> LoopStack;
+            bool BlockReturned = false;
+
+            // Return values across codegen functions
+            llvm::AllocaInst* RetAlloca = nullptr;
+            llvm::Value* RetValue = nullptr;
+            llvm::Type* RetType = nullptr;
+        };
+        static LLVMVisitorData s_Data;
+
+        ///////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////
         // MISCELANEOUS
 
-        static llvm::Type* LLVMType(TypeInfo type, llvm::LLVMContext& context) {
+        static llvm::Type* LLVMType(TypeInfo type) {
             switch (type) {
-            case scar::ast::TypeInfo::Void: return llvm::Type::getVoidTy(context);
+            case scar::ast::TypeInfo::Void: return llvm::Type::getVoidTy(s_Data.Context);
 
-            case scar::ast::TypeInfo::Bool: return llvm::Type::getInt1Ty(context);
+            case scar::ast::TypeInfo::Bool: return llvm::Type::getInt1Ty(s_Data.Context);
 
-            case scar::ast::TypeInfo::I8:  return llvm::Type::getInt8Ty(context);
-            case scar::ast::TypeInfo::I16: return llvm::Type::getInt16Ty(context);
-            case scar::ast::TypeInfo::I32: return llvm::Type::getInt32Ty(context);
-            case scar::ast::TypeInfo::I64: return llvm::Type::getInt64Ty(context);
+            case scar::ast::TypeInfo::I8:  return llvm::Type::getInt8Ty(s_Data.Context);
+            case scar::ast::TypeInfo::I16: return llvm::Type::getInt16Ty(s_Data.Context);
+            case scar::ast::TypeInfo::I32: return llvm::Type::getInt32Ty(s_Data.Context);
+            case scar::ast::TypeInfo::I64: return llvm::Type::getInt64Ty(s_Data.Context);
 
-            case scar::ast::TypeInfo::U8:  return llvm::Type::getInt8Ty(context);
-            case scar::ast::TypeInfo::U16: return llvm::Type::getInt16Ty(context);
-            case scar::ast::TypeInfo::U32: return llvm::Type::getInt32Ty(context);
-            case scar::ast::TypeInfo::U64: return llvm::Type::getInt64Ty(context);
+            case scar::ast::TypeInfo::U8:  return llvm::Type::getInt8Ty(s_Data.Context);
+            case scar::ast::TypeInfo::U16: return llvm::Type::getInt16Ty(s_Data.Context);
+            case scar::ast::TypeInfo::U32: return llvm::Type::getInt32Ty(s_Data.Context);
+            case scar::ast::TypeInfo::U64: return llvm::Type::getInt64Ty(s_Data.Context);
 
-            case scar::ast::TypeInfo::F32: return llvm::Type::getFloatTy(context);
-            case scar::ast::TypeInfo::F64: return llvm::Type::getDoubleTy(context);
+            case scar::ast::TypeInfo::F32: return llvm::Type::getFloatTy(s_Data.Context);
+            case scar::ast::TypeInfo::F64: return llvm::Type::getDoubleTy(s_Data.Context);
 
             case scar::ast::TypeInfo::Char:
                 SCAR_BUG("missing llvm::Type for Type::Char");
@@ -120,64 +182,6 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
         // VISITOR
-
-        class SymbolTable {
-        public:
-            struct Symbol {
-                llvm::AllocaInst* Alloca;
-                llvm::Type* Type;
-                llvm::StringRef Name;
-            };
-
-            SymbolTable() {
-                PushScope();
-            }
-
-            void Add(const Ident& name, llvm::AllocaInst* symbol) { Add(name.GetString(), symbol); }
-            void Add(const std::string& name, llvm::AllocaInst* symbol) {
-                m_Symbols.back()[name] = Symbol{ symbol, symbol->getType(), symbol->getName() };
-            }
-
-            void PushScope() { m_Symbols.push_back({}); }
-            void PopScope() { m_Symbols.pop_back(); }
-
-            const Symbol& Find(const Ident& name) const { return Find(name.GetString()); }
-            const Symbol& Find(const std::string& name) const {
-                for (auto iter = m_Symbols.rbegin(); iter != m_Symbols.rend(); iter++) {
-                    auto item = iter->find(name);
-                    if (item != iter->end()) {
-                        return item->second;
-                    }
-                }
-                SCAR_CRITICAL("Symbol '{}' not found in SymbolTable!", name);
-            }
-
-        private:
-            std::vector<std::unordered_map<std::string, Symbol>> m_Symbols;
-        };
-
-        struct LoopBlocks {
-            llvm::BasicBlock* Header;
-            llvm::BasicBlock* Exit;
-            LoopBlocks(llvm::BasicBlock* header, llvm::BasicBlock* exit) : Header(header), Exit(exit) {}
-        };
-
-        struct LLVMVisitorData {
-            llvm::LLVMContext Context;
-            Scope<llvm::IRBuilder<>> Builder;
-            Scope<llvm::legacy::FunctionPassManager> FunctionPassManager;
-            Scope<llvm::Module> Module;
-
-            SymbolTable Symbols;
-            std::vector<LoopBlocks> LoopStack;
-            bool BlockReturned = false;
-
-            // Return values across codegen functions
-            llvm::AllocaInst* RetAlloca = nullptr;
-            llvm::Value* RetValue = nullptr;
-            llvm::Type* RetType = nullptr;
-        };
-        static LLVMVisitorData s_Data;
 
         LLVMVisitor::LLVMVisitor() {
             s_Data.Module = MakeScope<llvm::Module>("test_module", s_Data.Context);
@@ -314,7 +318,6 @@ namespace scar {
             llvm::AllocaInst* alloc = CreateEntryAlloca(func, s_Data.RetType, node.Name.GetString());
             s_Data.Symbols.Add(node.Name, alloc);
 
-            s_Data.RetValue = s_Data.Builder->CreateLoad(alloc, node.Name.GetString());
             s_Data.RetAlloca = alloc;
         }
 
@@ -502,11 +505,6 @@ namespace scar {
             s_Data.RetValue = s_Data.Builder->CreateLoad(s_Data.RetAlloca, node.Name.GetString());
         }
 
-        void LLVMVisitor::Visit(Cast& node) {
-            node.LHS->Accept(*this);
-            // TODO: add per-type casting
-        }
-
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
         // OPERATORS
@@ -545,6 +543,9 @@ namespace scar {
         }
 
         void LLVMVisitor::Visit(SuffixOperator& node) {
+            node.LHS->Accept(*this);
+            llvm::Value* lhs = s_Data.RetValue;
+
             switch (node.Type) {
             case SuffixOperator::Increment:
                 SCAR_BUG("SuffixOperator::Increment not implemented");
@@ -552,13 +553,66 @@ namespace scar {
             case SuffixOperator::Decrement:
                 SCAR_BUG("SuffixOperator::Decrement not implemented");
                 break;
+            case SuffixOperator::Cast:
+            {
+                // Cast to bool
+                if (node.ResultType.IsBool()) {
+                    if (node.LHS->ResultType.IsInt()) {
+                        // Compare lhs to (i32) zero
+                        s_Data.RetValue = s_Data.Builder->CreateICmpNE(lhs, llvm::ConstantInt::get(llvm::Type::getInt32Ty(s_Data.Context), llvm::APInt(32, 0)), "cast");
+                    }
+                    else if (node.LHS->ResultType.IsFloat()) {
+                        // Compare lhs to (f32) zero
+                        s_Data.RetValue = s_Data.Builder->CreateFCmpUNE(lhs, llvm::ConstantFP::get(llvm::Type::getFloatTy(s_Data.Context), llvm::APFloat(0.0f)), "cast");
+                    }
+                }
+                // Cast to sint or uint
+                if (node.ResultType.IsInt()) {
+                    if (node.LHS->ResultType.IsBool() || node.LHS->ResultType.IsInt()) {
+                        // Basic int cast
+                        s_Data.RetValue = s_Data.Builder->CreateIntCast(lhs, LLVMType(node.ResultType), node.ResultType.IsSInt(), "cast");
+                    }
+                    else if (node.LHS->ResultType.IsFloat()) {
+                        // Convert from floating to sint/uint
+                        if (node.ResultType.IsSInt())
+                            s_Data.RetValue = s_Data.Builder->CreateFPToSI(lhs, LLVMType(node.ResultType), "cast");
+                        else
+                            s_Data.RetValue = s_Data.Builder->CreateFPToUI(lhs, LLVMType(node.ResultType), "cast");
+                    }
+                }
+                // Cast to float
+                else if (node.ResultType.IsFloat()) {
+                    if (node.LHS->ResultType.IsBool() || node.LHS->ResultType.IsInt()) {
+                        // Convert from sint/uint to floating point
+                        if (node.LHS->ResultType.IsUInt())
+                            s_Data.RetValue = s_Data.Builder->CreateUIToFP(lhs, LLVMType(node.ResultType), "cast");
+                        else
+                            s_Data.RetValue = s_Data.Builder->CreateSIToFP(lhs, LLVMType(node.ResultType), "cast");
+                    }
+                    else if (node.LHS->ResultType.IsFloat()) {
+                        // Basic floating point cast
+                        s_Data.RetValue = s_Data.Builder->CreateFPCast(lhs, LLVMType(node.ResultType), "cast");
+                    }
+                }
+                // Cast to char
+                else if (node.ResultType.IsChar()) {
+                    SCAR_BUG("missing LLVM IR code for cast to char");
+                }
+                // Cast to string
+                else if (node.ResultType.IsString()) {
+                    SCAR_BUG("missing LLVM IR code for cast to string");
+                }
+                else {
+                    SPAN_ERROR("invalid cast", node.GetSpan());
+                }
+                break;
+            }
 
             default:
                 SCAR_BUG("missing LLVM IR code for prefix operator {}", node.Type);
                 s_Data.RetValue = nullptr;
                 break;
             }
-            node.LHS->Accept(*this);
         }
 
         void MakeBothFloat(llvm::Value*& lhs, llvm::Value*& rhs, const Ref<Expr>& lhsNode, const Ref<Expr>& rhsNode) {
@@ -729,20 +783,20 @@ namespace scar {
         // LITERALS
 
         void LLVMVisitor::Visit(LiteralBool& node) {
-            llvm::Type* type = LLVMType(node.ResultType, s_Data.Context);
+            llvm::Type* type = LLVMType(node.ResultType);
             unsigned int bits = TypeBits(node.ResultType);
             s_Data.RetValue = llvm::ConstantInt::get(type, llvm::APInt(bits, node.Value));
         }
 
         void LLVMVisitor::Visit(LiteralInteger& node) {
-            llvm::Type* type = LLVMType(node.ResultType, s_Data.Context);
+            llvm::Type* type = LLVMType(node.ResultType);
             unsigned int bits = TypeBits(node.ResultType);
             bool sign = TypeIsSigned(node.ResultType);
             s_Data.RetValue = llvm::ConstantInt::get(type, llvm::APInt(bits, node.Value, sign));
         }
 
         void LLVMVisitor::Visit(LiteralFloat& node) {
-            llvm::Type* type = LLVMType(node.ResultType, s_Data.Context);
+            llvm::Type* type = LLVMType(node.ResultType);
             s_Data.RetValue = llvm::ConstantFP::get(type, llvm::APFloat(node.Value));
         }
 

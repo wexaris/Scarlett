@@ -46,7 +46,7 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(VarDecl& node) {
-            PRINT_BRANCH("VarDecl {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
+            PRINT_LEAF("VarDecl {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -121,13 +121,6 @@ namespace scar {
 
         void PrintVisitor::Visit(VarAccess& node) {
             PRINT_LEAF("VarAccess {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
-        }
-
-        void PrintVisitor::Visit(Cast& node) {
-            PRINT_LEAF("Cast {}", node.ResultType);
-            m_IndentCount++;
-            node.LHS->Accept(*this);
-            m_IndentCount--;
         }
 
         ///////////////////////////////////////////////////////////////////////
