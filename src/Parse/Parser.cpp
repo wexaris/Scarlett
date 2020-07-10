@@ -526,11 +526,11 @@ namespace scar {
             Bump();
             break;
         case Token::LitInt:
-            atom = MakeRef<ast::LiteralInteger>(m_Token->GetInt(), ASTType(m_Token->ValueType), GetSpanFrom(start));
+            atom = MakeRef<ast::LiteralInteger>(m_Token->GetInt(), ASTType(m_Token->LiteralType), GetSpanFrom(start));
             Bump();
             break;
         case Token::LitFloat:
-            atom = MakeRef<ast::LiteralFloat>(m_Token->GetFloat(), ASTType(m_Token->ValueType), GetSpanFrom(start));
+            atom = MakeRef<ast::LiteralFloat>(m_Token->GetFloat(), ASTType(m_Token->LiteralType), GetSpanFrom(start));
             Bump();
             break;
         case Token::LitString:
@@ -558,6 +558,7 @@ namespace scar {
                     ast::TypeInfo targetType = ASTType(ExpectTypeToken().Type);
                     return MakeRef<ast::SuffixOperator>(suffixOp, atom, targetType, GetSpanFrom(start));
                 }
+
                 return MakeRef<ast::SuffixOperator>(suffixOp, atom, GetSpanFrom(start));
             }
         }

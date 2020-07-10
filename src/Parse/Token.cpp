@@ -10,15 +10,15 @@ namespace scar {
     {}
     
     Token::Token(TokenType type, TokenType valType, uint64_t val, const TextSpan& span) :
-        Type(type), Span(span), m_Value(std::in_place_index_t<0>{}, val), ValueType(valType)
+        Type(type), LiteralType(valType), Span(span), m_Value(std::in_place_index_t<0>{}, val)
     {}
     
     Token::Token(TokenType type, TokenType valType, double val, const TextSpan& span) :
-        Type(type), Span(span), m_Value(std::in_place_index_t<1>{}, val), ValueType(valType)
+        Type(type), LiteralType(valType), Span(span), m_Value(std::in_place_index_t<1>{}, val)
     {}
     
     Token::Token(TokenType type, std::string_view val, const TextSpan& span) :
-        Type(type), Span(span), m_Value(std::in_place_index_t<2>{}, Interner::Intern(val)), ValueType(String)
+        Type(type), LiteralType(String), Span(span), m_Value(std::in_place_index_t<2>{}, Interner::Intern(val))
     {}
 
     uint64_t Token::GetInt() const {

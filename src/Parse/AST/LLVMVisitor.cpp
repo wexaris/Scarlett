@@ -34,9 +34,9 @@ namespace scar {
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
-        // SUPPORT
+        // VISITOR
 
-        class SymbolTable {
+        class LLVMVisitorSymbolTable {
         public:
             struct Symbol {
                 llvm::AllocaInst* Alloca;
@@ -44,7 +44,7 @@ namespace scar {
                 llvm::StringRef Name;
             };
 
-            SymbolTable() {
+            LLVMVisitorSymbolTable() {
                 PushScope();
             }
 
@@ -83,7 +83,7 @@ namespace scar {
             Scope<llvm::legacy::FunctionPassManager> FunctionPassManager;
             Scope<llvm::Module> Module;
 
-            SymbolTable Symbols;
+            LLVMVisitorSymbolTable Symbols;
             std::vector<LoopBlocks> LoopStack;
             bool BlockReturned = false;
 
@@ -96,7 +96,7 @@ namespace scar {
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
-        // MISCELANEOUS
+        // SUPPORT
 
         static llvm::Type* LLVMType(TypeInfo type) {
             switch (type) {
@@ -224,7 +224,7 @@ namespace scar {
                 SCAR_BUG("missing LLVM IR code for VariableType {}", node.ResultType);
                 break;
             }
-        }        
+        }
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
@@ -770,7 +770,7 @@ namespace scar {
                 s_Data.RetValue = s_Data.Builder->CreateOr(lhs, rhs, "or");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
-          
+
             default:
                 SCAR_BUG("missing LLVM IR code for binary operator {}", node.Type);
                 s_Data.RetValue = nullptr;

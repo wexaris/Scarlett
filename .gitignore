@@ -1,6 +1,7 @@
 # Directories
 .vs/
 .vscode/
+out/
 build/
 
 # Files

@@ -99,13 +99,13 @@ namespace scar {
         };
 
         const TokenType Type = Token::Invalid;
-        const TokenType ValueType = Token::Invalid;
+        const TokenType LiteralType = Token::Invalid; // Type=LitInt, LiteralType=i32
         const TextSpan Span;
 
         Token(const TextSpan& span);
         Token(TokenType type, const TextSpan& span);
-        Token(TokenType type, TokenType valType, uint64_t val, const TextSpan& span);
-        Token(TokenType type, TokenType valType, double val, const TextSpan& span);
+        Token(TokenType type, TokenType literalType, uint64_t val, const TextSpan& span);
+        Token(TokenType type, TokenType literalType, double val, const TextSpan& span);
         Token(TokenType type, std::string_view val, const TextSpan& span);
 
         TextPosition GetTextPos() const { return TextPosition(Span.Line, Span.Col, Span.Index); }

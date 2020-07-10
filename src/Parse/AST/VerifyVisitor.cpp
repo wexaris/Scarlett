@@ -10,9 +10,9 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // VISITOR
 
-        class SymbolTable {
+        class VerifyVisitorSymbolTable {
         public:
-            SymbolTable() {
+            VerifyVisitorSymbolTable() {
                 PushScope();
             }
 
@@ -20,7 +20,7 @@ namespace scar {
             void Add(const std::string & name, TypeInfo type) {
                 m_Symbols.back()[name] = type;
             }
-            
+
             void PushScope() { m_Symbols.push_back({}); }
             void PopScope() { m_Symbols.pop_back(); }
 
@@ -39,11 +39,11 @@ namespace scar {
             std::vector<std::unordered_map<std::string, TypeInfo>> m_Symbols;
         };
 
-        struct TypeCheckVisitorData {
-            SymbolTable Symbols;
+        struct VerifyVisitorData {
+            VerifyVisitorSymbolTable Symbols;
             FunctionPrototype* CurrentFunction;
         };
-        static TypeCheckVisitorData s_Data{};
+        static VerifyVisitorData s_Data{};
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
@@ -165,7 +165,7 @@ namespace scar {
         void TypeCheckVisitor::Visit(PrefixOperator& node) {
             node.RHS->Accept(*this);
             TypeInfo rhsType = node.RHS->ResultType;
-            
+
             if (!rhsType.IsValid()) {
                 return;
             }
