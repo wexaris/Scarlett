@@ -1,5 +1,6 @@
 #include "scarpch.hpp"
 #include "Parse/AST/VerifyVisitor.hpp"
+#include "Parse/AST/SymbolTable.hpp"
 
 #define SPAN_ERROR(msg, span) SCAR_ERROR("{}: {}", span, msg)
 
@@ -10,33 +11,22 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // VISITOR
 
-        class VerifyVisitorSymbolTable {
+        class VerifyVisitorSymbolTable : public SymbolTable<std::string, TypeInfo> {
         public:
-            VerifyVisitorSymbolTable() {
-                PushScope();
+            VerifyVisitorSymbolTable() = default;
+            ~VerifyVisitorSymbolTable() = default;
+
+            void Add(const Ident& key, TypeInfo value) { Add(key.GetString(), value); }
+            void Add(const std::string& key, TypeInfo value) {
+                m_Symbols.back()[key] = value;
             }
 
-            void Add(const Ident& name, TypeInfo type) { Add(name.GetString(), type); }
-            void Add(const std::string & name, TypeInfo type) {
-                m_Symbols.back()[name] = type;
+            TypeInfo Find(const Ident& key) const { return Find(key.GetString()); }
+            TypeInfo Find(const std::string& key) const {
+                auto ret = TryFind(key);
+                if (!ret) return TypeInfo::Invalid;
+                return *ret;
             }
-
-            void PushScope() { m_Symbols.push_back({}); }
-            void PopScope() { m_Symbols.pop_back(); }
-
-            TypeInfo Find(const Ident& name) const { return Find(name.GetString()); }
-            TypeInfo Find(const std::string & name) const {
-                for (auto iter = m_Symbols.rbegin(); iter != m_Symbols.rend(); iter++) {
-                    auto item = iter->find(name);
-                    if (item != iter->end()) {
-                        return item->second;
-                    }
-                }
-                return TypeInfo::Invalid;
-            }
-
-        private:
-            std::vector<std::unordered_map<std::string, TypeInfo>> m_Symbols;
         };
 
         struct VerifyVisitorData {

@@ -1,5 +1,6 @@
 #include "scarpch.hpp"
 #include "Parse/AST/LLVMVisitor.hpp"
+#include "Parse/AST/SymbolTable.hpp"
 
 #ifdef _MSC_VER
     #pragma warning(push, 0)
@@ -36,7 +37,7 @@ namespace scar {
         ///////////////////////////////////////////////////////////////////////
         // VISITOR
 
-        class LLVMVisitorSymbolTable {
+        /*class LLVMVisitorSymbolTable {
         public:
             struct Symbol {
                 llvm::AllocaInst* Alloca;
@@ -69,6 +70,29 @@ namespace scar {
 
         private:
             std::vector<std::unordered_map<std::string, Symbol>> m_Symbols;
+        };*/
+
+        struct LLVMVisitorSymbol {
+            llvm::AllocaInst* Alloca;
+            llvm::Type* Type;
+            llvm::StringRef Name;
+        };
+        class LLVMVisitorSymbolTable : public SymbolTable<std::string, LLVMVisitorSymbol> {
+        public:
+            LLVMVisitorSymbolTable() = default;
+            ~LLVMVisitorSymbolTable() = default;
+
+            void Add(const Ident& key, llvm::AllocaInst* val) { Add(key.GetString(), val); }
+            void Add(const std::string& key, llvm::AllocaInst* val) {
+                m_Symbols.back()[key] = LLVMVisitorSymbol{ val, val->getType(), val->getName() };
+            }
+
+            const LLVMVisitorSymbol& Find(const Ident& key) const { return Find(key.GetString()); }
+            const LLVMVisitorSymbol& Find(const std::string& key) const {
+                auto ret = TryFind(key);
+                if (!ret) SCAR_CRITICAL("Symbol '{}' not found in SymbolTable!", key);
+                return *ret;
+            }
         };
 
         struct LoopBlocks {
