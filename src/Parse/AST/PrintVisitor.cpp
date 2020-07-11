@@ -38,17 +38,16 @@ namespace scar {
             }
         };
 
-
-#define PRINT(...) \
-    SCAR_TRACE("{}-{} <{}>", GetIndent(), FMT(__VA_ARGS__), node.GetSpan()); \
-    Scoper scoper;
+#define PRINT(...) SCAR_TRACE("{}-{} <{}>", GetIndent(), FMT(__VA_ARGS__), node.GetSpan())
+#define ADD_SCOPE() Scoper scoper##__LINE__
+#define PRINT_AND_SCOPE(...) PRINT(__VA_ARGS__); ADD_SCOPE();
 
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
         // TYPE
 
         void PrintVisitor::Visit(Type& node) {
-            PRINT("Type {}", node.ResultType);
+            PRINT_AND_SCOPE("Type {}", node.ResultType);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -56,7 +55,7 @@ namespace scar {
         // DECLARAIONS
 
         void PrintVisitor::Visit(Module& node) {
-            PRINT("Module");
+            PRINT_AND_SCOPE("Module");
             for (size_t i = 0; i < node.Items.size(); i++) {
                 EnableBranch(i != node.Items.size() - 1);
                 node.Items[i]->Accept(*this);
@@ -64,25 +63,26 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(Function& node) {
-            PRINT("Function");
+            PRINT_AND_SCOPE("Function");
             node.Prototype->Accept(*this);
             EnableBranch(false);
             node.CodeBlock->Accept(*this);
         }
 
         void PrintVisitor::Visit(FunctionPrototype& node) {
-            PRINT("FunctionPrototype {} \"{}\"({})", node.ReturnType->ResultType, node.Name, node.Name.StringID);
+            PRINT_AND_SCOPE("FunctionPrototype {} \"{}\"({})", node.ReturnType->ResultType, node.Name, node.Name.StringID);
             for (size_t i = 0; i < node.Args.size(); i++) {
                 EnableBranch(i != node.Args.size() - 1);
                 PRINT("Arg {} \"{}\"({})",
                       node.Args[i].VarType->ResultType,
-                      node.Args[i].Name,
-                      node.Args[i].Name.StringID);
+                      node.Args[i].Name, node.Args[i].Name.StringID);
             }
         }
 
         void PrintVisitor::Visit(VarDecl& node) {
-            PRINT("VarDecl {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
+            PRINT_AND_SCOPE("VarDecl {} \"{}\"({})",
+                            node.ResultType,
+                            node.Name, node.Name.StringID);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -90,7 +90,7 @@ namespace scar {
         // STATEMENTS
 
         void PrintVisitor::Visit(Branch& node) {
-            PRINT("Branch");
+            PRINT_AND_SCOPE("Branch");
             node.Condition->Accept(*this);
             EnableBranch((bool)node.FalseBlock);
             node.TrueBlock->Accept(*this);
@@ -101,7 +101,7 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(ForLoop& node) {
-            PRINT("ForLoop");
+            PRINT_AND_SCOPE("ForLoop");
             node.Init->Accept(*this);
             node.Condition->Accept(*this);
             node.Update->Accept(*this);
@@ -110,14 +110,14 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(WhileLoop& node) {
-            PRINT("WhileLoop");
+            PRINT_AND_SCOPE("WhileLoop");
             node.Condition->Accept(*this);
             EnableBranch(false);
             node.CodeBlock->Accept(*this);
         }
 
         void PrintVisitor::Visit(Block& node) {
-            PRINT("Block");
+            PRINT_AND_SCOPE("Block");
             for (size_t i = 0; i < node.Items.size(); i++) {
                 EnableBranch(i != node.Items.size() - 1);
                 node.Items[i]->Accept(*this);
@@ -125,15 +125,15 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(Continue& node) {
-            PRINT("Continue");
+            PRINT_AND_SCOPE("Continue");
         }
 
         void PrintVisitor::Visit(Break& node) {
-            PRINT("Break");
+            PRINT_AND_SCOPE("Break");
         }
 
         void PrintVisitor::Visit(Return& node) {
-            PRINT("Return");
+            PRINT_AND_SCOPE("Return");
             EnableBranch(false);
             node.Value->Accept(*this);
         }
@@ -143,7 +143,10 @@ namespace scar {
         // EXPRESSIONS
 
         void PrintVisitor::Visit(FunctionCall& node) {
-            PRINT("FunctionCall {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
+            PRINT_AND_SCOPE("FunctionCall {} \"{}\"({})",
+                            node.ResultType,
+                            node.Name, node.Name.StringID);
+
             for (size_t i = 0; i < node.Args.size(); i++) {
                 EnableBranch(i != node.Args.size() - 1);
                 node.Args[i]->Accept(*this);
@@ -151,7 +154,9 @@ namespace scar {
         }
 
         void PrintVisitor::Visit(VarAccess& node) {
-            PRINT("VarAccess {} \"{}\"({})", node.ResultType, node.Name, node.Name.StringID);
+            PRINT_AND_SCOPE("VarAccess {} \"{}\"({})",
+                            node.ResultType,
+                            node.Name, node.Name.StringID);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -159,19 +164,26 @@ namespace scar {
         // OPERATORS
 
         void PrintVisitor::Visit(PrefixOperator& node) {
-            PRINT("Prefix {}", node.Type);
+            PRINT_AND_SCOPE("Prefix {}", node.Type);
             EnableBranch(false);
             node.RHS->Accept(*this);
         }
 
         void PrintVisitor::Visit(SuffixOperator& node) {
-            PRINT("Suffix {}", node.Type);
+            switch (node.Type)
+            {
+            case SuffixOperator::Cast: PRINT("Cast {}", node.ResultType); break;
+            default:
+                PRINT("Suffix {}", node.Type);
+                break;
+            }
+            ADD_SCOPE();
             EnableBranch(false);
             node.LHS->Accept(*this);
         }
 
         void PrintVisitor::Visit(BinaryOperator& node) {
-            PRINT("Binary {}", node.Type);
+            PRINT_AND_SCOPE("Binary {}", node.Type);
             node.LHS->Accept(*this);
             EnableBranch(false);
             node.RHS->Accept(*this);
@@ -182,19 +194,21 @@ namespace scar {
         // LITERALS
 
         void PrintVisitor::Visit(LiteralBool& node) {
-            PRINT("Bool {}", node.Value);
+            PRINT_AND_SCOPE("Bool {} {}", node.ResultType, node.Value);
         }
 
         void PrintVisitor::Visit(LiteralInteger& node) {
-            PRINT("Int {}", node.Value);
+            PRINT_AND_SCOPE("Int {} {}", node.ResultType, node.Value);
         }
 
         void PrintVisitor::Visit(LiteralFloat& node) {
-            PRINT("Float {}", node.Value);
+            PRINT_AND_SCOPE("Float {} {}", node.ResultType, node.Value);
         }
 
         void PrintVisitor::Visit(LiteralString& node) {
-            PRINT("String \"{}\"({})", Interner::GetString(node.StringID), node.StringID);
+            PRINT_AND_SCOPE("String \"{}\"({})",
+                            Interner::GetString(node.StringID),
+                            node.StringID);
         }
 
     }
