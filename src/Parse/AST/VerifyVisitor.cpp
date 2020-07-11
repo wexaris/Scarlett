@@ -7,6 +7,33 @@
 namespace scar {
     namespace ast {
 
+        std::string_view BaseTypeName(TypeInfo x) {
+            if (x.IsBool()) return "boolean";
+            if (x.IsInt()) return "integer";
+            if (x.IsFloat()) return "float";
+            if (x.IsChar()) return "char";
+            if (x.IsString()) return "string";
+            if (x.IsVoid()) return "void";
+            SCAR_BUG("missing base type name for {}", x);
+            return AsString((Token::TokenType)x.Type);
+        }
+
+        bool IsSameBaseType(TypeInfo x, TypeInfo y) {
+            return
+                (x.IsBool()   && y.IsBool())   ||
+                (x.IsInt()    && y.IsInt())    ||
+                (x.IsFloat()  && y.IsFloat())  ||
+                (x.IsChar()   && y.IsChar())   ||
+                (x.IsString() && y.IsString()) ||
+                (x.IsVoid()   && y.IsVoid());
+        }
+
+        TypeInfo LargestType(TypeInfo x, TypeInfo y) {
+            if (!IsSameBaseType(x, y))
+                return TypeInfo::Invalid;
+            return (int)x >= (int)y ? x : y;
+        }
+
         ///////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////
         // VISITOR
@@ -167,25 +194,19 @@ namespace scar {
             switch (node.Type) {
             case PrefixOperator::Plus: [[fallthrough]];
             case PrefixOperator::Minus:
-                if (rhsType.IsInt() || rhsType.IsFloat())
-                    node.ResultType = rhsType;
-                else {
-                    SPAN_ERROR(FMT("prefix operator {} not defined for {} type", node.Type, node.RHS->ResultType), node.GetSpan());
-                }
+                if (!rhsType.IsInt() && !rhsType.IsFloat())
+                    SPAN_ERROR(FMT("expected an integer or float, found {}", rhsType), node.GetSpan());
+                node.ResultType = rhsType;
                 break;
             case PrefixOperator::Not:
-                if (rhsType.IsBool())
-                    node.ResultType = rhsType;
-                else {
-                    SPAN_ERROR(FMT("prefix operator {} not defined for {} type", node.Type, node.RHS->ResultType), node.GetSpan());
-                }
+                if (!rhsType.IsBool())
+                    SPAN_ERROR(FMT("expected a bool, found {}", rhsType), node.RHS->GetSpan());
+                node.ResultType = TypeInfo::Bool;
                 break;
             case PrefixOperator::BitNot:
-                if (rhsType.IsBool() || rhsType.IsInt() || rhsType.IsInt())
-                    node.ResultType = rhsType;
-                else {
-                    SPAN_ERROR(FMT("prefix operator {} not defined for {} type", node.Type, node.RHS->ResultType), node.GetSpan());
-                }
+                if (!rhsType.IsInt())
+                    SPAN_ERROR(FMT("expected an integer, found {}", rhsType), node.GetSpan());
+                node.ResultType = rhsType;
                 break;
             case PrefixOperator::Increment:
                 SCAR_BUG("PrefixOperator::Increment not implemented");
@@ -220,6 +241,8 @@ namespace scar {
                 SCAR_BUG("SuffixOperator::Decrement not implemented");
                 break;
             case SuffixOperator::Cast:
+                // TODO: check cast validity. Largely already done in LLVMVisitor.
+                // node.ResultType is already set to target type
                 break;
 
             default:
@@ -271,41 +294,37 @@ namespace scar {
             case BinaryOperator::Remainder: [[fallthrough]];
             case BinaryOperator::Plus:      [[fallthrough]];
             case BinaryOperator::Minus:
-                if (lhsType.IsInt() || lhsType.IsFloat()) { node.ResultType = lhsType; }
-                else {
-                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
-                }
+                if (lhsType != rhsType)
+                    SPAN_ERROR("type mismatch", node.LHS->GetSpan());
                 break;
             case BinaryOperator::Greater:   [[fallthrough]];
             case BinaryOperator::GreaterEq: [[fallthrough]];
             case BinaryOperator::Lesser:    [[fallthrough]];
             case BinaryOperator::LesserEq:
-                if (lhsType.IsBool()) { node.ResultType = lhsType; }
-                else {
-                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
-                }
+                if (lhsType != rhsType)
+                    SPAN_ERROR("type mismatch", node.LHS->GetSpan());
                 break;
             case BinaryOperator::Eq:        [[fallthrough]];
             case BinaryOperator::NotEq:
-                if (rhsType.IsBool() || rhsType.IsInt() || rhsType.IsFloat()) { node.ResultType = lhsType; }
-                else {
-                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
-                }
+                if (lhsType != rhsType)
+                    SPAN_ERROR("type mismatch", node.LHS->GetSpan());
                 break;
             case BinaryOperator::BitAnd:    [[fallthrough]];
             case BinaryOperator::BitXOr:    [[fallthrough]];
             case BinaryOperator::BitOr:
-                if (rhsType.IsBool() || rhsType.IsInt() || rhsType.IsFloat()) { node.ResultType = lhsType; }
-                else {
-                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
-                }
+                if (!lhsType.IsInt())
+                    SPAN_ERROR(FMT("expected an integer, found {}", lhsType), node.LHS->GetSpan());
+                if (!rhsType.IsInt())
+                    SPAN_ERROR(FMT("expected an integer, found {}", rhsType), node.RHS->GetSpan());
+                node.ResultType = LargestType(lhsType, rhsType);
                 break;
             case BinaryOperator::LogicAnd:  [[fallthrough]];
             case BinaryOperator::LogicOr:
-                if (lhsType.IsBool()) { node.ResultType = lhsType; }
-                else {
-                    SCAR_BUG("binary operator {} not defined for {} type", node.Type, node.RHS->ResultType);
-                }
+                if (!lhsType.IsBool())
+                    SPAN_ERROR(FMT("expected a bool, found {}", lhsType), node.LHS->GetSpan());
+                if (!rhsType.IsBool())
+                    SPAN_ERROR(FMT("expected a bool, found {}", rhsType), node.RHS->GetSpan());
+                node.ResultType = TypeInfo::Bool;
                 break;
 
             default:
