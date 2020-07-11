@@ -295,19 +295,19 @@ namespace scar {
             case BinaryOperator::Plus:      [[fallthrough]];
             case BinaryOperator::Minus:
                 if (lhsType != rhsType)
-                    SPAN_ERROR("type mismatch", node.LHS->GetSpan());
+                    SPAN_ERROR(FMT("type mismatch: {} and {}", lhsType, rhsType), node.LHS->GetSpan());
                 break;
             case BinaryOperator::Greater:   [[fallthrough]];
             case BinaryOperator::GreaterEq: [[fallthrough]];
             case BinaryOperator::Lesser:    [[fallthrough]];
             case BinaryOperator::LesserEq:
                 if (lhsType != rhsType)
-                    SPAN_ERROR("type mismatch", node.LHS->GetSpan());
+                    SPAN_ERROR(FMT("type mismatch: {} and {}", lhsType, rhsType), node.LHS->GetSpan());
                 break;
             case BinaryOperator::Eq:        [[fallthrough]];
             case BinaryOperator::NotEq:
                 if (lhsType != rhsType)
-                    SPAN_ERROR("type mismatch", node.LHS->GetSpan());
+                    SPAN_ERROR(FMT("type mismatch: {} and {}", lhsType, rhsType), node.LHS->GetSpan());
                 break;
             case BinaryOperator::BitAnd:    [[fallthrough]];
             case BinaryOperator::BitXOr:    [[fallthrough]];
