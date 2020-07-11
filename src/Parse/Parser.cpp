@@ -386,7 +386,7 @@ namespace scar {
         TextPosition start = m_Token->GetTextPos();
 
         Expect({ Token::Loop });
-        Ref<ast::LiteralFloat> cond = MakeRef<ast::LiteralFloat>(1.0, ast::TypeInfo::F64, m_Token->Span);
+        Ref<ast::LiteralBool> cond = MakeRef<ast::LiteralBool>(true, m_Token->Span);
         Ref<ast::Block> block = Block();
 
         return MakeRef<ast::WhileLoop>(cond, block, GetSpanFrom(start));

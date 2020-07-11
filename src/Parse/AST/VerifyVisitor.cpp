@@ -102,9 +102,8 @@ namespace scar {
 
         void VerifyVisitor::Visit(VarDecl& node) {
             node.VarType->Accept(*this);
-            if (node.ResultType.IsVoid()) {
+            if (node.ResultType.IsVoid())
                 SPAN_ERROR("invalid void type variable", node.VarType->GetSpan());
-            }
             s_Data.Symbols.Add(node.Name, node.ResultType);
         }
 
@@ -116,6 +115,9 @@ namespace scar {
             node.Condition->Accept(*this);
             node.TrueBlock->Accept(*this);
             node.FalseBlock->Accept(*this);
+
+            if (!node.Condition->ResultType.IsBool())
+                SPAN_ERROR(FMT("expectead a boolean, found {}", node.Condition->ResultType), node.Condition->GetSpan());
         }
 
         void VerifyVisitor::Visit(ForLoop& node) {
@@ -123,11 +125,17 @@ namespace scar {
             node.Condition->Accept(*this);
             node.Update->Accept(*this);
             node.CodeBlock->Accept(*this);
+
+            if (!node.Condition->ResultType.IsBool())
+                SPAN_ERROR(FMT("expectead a boolean, found {}", node.Condition->ResultType), node.Condition->GetSpan());
         }
 
         void VerifyVisitor::Visit(WhileLoop& node) {
             node.Condition->Accept(*this);
             node.CodeBlock->Accept(*this);
+
+            if (!node.Condition->ResultType.IsBool())
+                SPAN_ERROR(FMT("expectead a boolean, found {}", node.Condition->ResultType), node.Condition->GetSpan());
         }
 
         void VerifyVisitor::Visit(Block& node) {
@@ -296,6 +304,7 @@ namespace scar {
             case BinaryOperator::Minus:
                 if (lhsType != rhsType)
                     SPAN_ERROR(FMT("type mismatch: {} and {}", lhsType, rhsType), node.LHS->GetSpan());
+                node.ResultType = lhsType;
                 break;
             case BinaryOperator::Greater:   [[fallthrough]];
             case BinaryOperator::GreaterEq: [[fallthrough]];
@@ -303,11 +312,13 @@ namespace scar {
             case BinaryOperator::LesserEq:
                 if (lhsType != rhsType)
                     SPAN_ERROR(FMT("type mismatch: {} and {}", lhsType, rhsType), node.LHS->GetSpan());
+                node.ResultType = TypeInfo::Bool;
                 break;
             case BinaryOperator::Eq:        [[fallthrough]];
             case BinaryOperator::NotEq:
                 if (lhsType != rhsType)
                     SPAN_ERROR(FMT("type mismatch: {} and {}", lhsType, rhsType), node.LHS->GetSpan());
+                node.ResultType = TypeInfo::Bool;
                 break;
             case BinaryOperator::BitAnd:    [[fallthrough]];
             case BinaryOperator::BitXOr:    [[fallthrough]];

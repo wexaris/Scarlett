@@ -313,8 +313,7 @@ namespace scar {
             s_Data.Symbols.PushScope();
 
             node.Condition->Accept(*this);
-            llvm::Value* cond = s_Data.Builder->CreateFCmpONE(s_Data.RetValue, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "cond");
-            s_Data.Builder->CreateCondBr(cond, trueBlock, falseBlock);
+            s_Data.Builder->CreateCondBr(s_Data.RetValue, trueBlock, falseBlock);
 
             bool needExit = false;
 
@@ -376,8 +375,7 @@ namespace scar {
             // Header block
             s_Data.Builder->SetInsertPoint(headerBlock);
             node.Condition->Accept(*this);
-            llvm::Value* cond = s_Data.Builder->CreateFCmpONE(s_Data.RetValue, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "cond");
-            s_Data.Builder->CreateCondBr(cond, bodyBlock, exitBlock);
+            s_Data.Builder->CreateCondBr(s_Data.RetValue, bodyBlock, exitBlock);
 
             // Body block
             s_Data.Builder->SetInsertPoint(bodyBlock);
@@ -408,8 +406,7 @@ namespace scar {
             // Header block
             s_Data.Builder->SetInsertPoint(headerBlock);
             node.Condition->Accept(*this);
-            llvm::Value* cond = s_Data.Builder->CreateFCmpONE(s_Data.RetValue, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "cond");
-            s_Data.Builder->CreateCondBr(cond, bodyBlock, exitBlock);
+            s_Data.Builder->CreateCondBr(s_Data.RetValue, bodyBlock, exitBlock);
 
             // Body block
             s_Data.Builder->SetInsertPoint(bodyBlock);
@@ -704,51 +701,40 @@ namespace scar {
                 break;
             case BinaryOperator::Greater:
                 s_Data.RetValue = s_Data.Builder->CreateFCmpUGT(lhs, rhs, "fgr");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::GreaterEq:
                 s_Data.RetValue = s_Data.Builder->CreateFCmpUGE(lhs, rhs, "fgeq");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::Lesser:
                 s_Data.RetValue = s_Data.Builder->CreateFCmpULT(lhs, rhs, "fle");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LesserEq:
                 s_Data.RetValue = s_Data.Builder->CreateFCmpULE(lhs, rhs, "fleq");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::Eq:
                 s_Data.RetValue = s_Data.Builder->CreateFCmpUEQ(lhs, rhs, "feq");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::NotEq:
                 s_Data.RetValue = s_Data.Builder->CreateFCmpUNE(lhs, rhs, "fneq");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitAnd:
                 s_Data.RetValue = s_Data.Builder->CreateAnd(lhs, rhs, "band");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitXOr:
                 s_Data.RetValue = s_Data.Builder->CreateXor(lhs, rhs, "bxor");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitOr:
                 s_Data.RetValue = s_Data.Builder->CreateOr(lhs, rhs, "bor");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LogicAnd:
                 lhs = s_Data.Builder->CreateFCmpONE(lhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "lhs.neq");
                 rhs = s_Data.Builder->CreateFCmpONE(rhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "rhs.neq");
                 s_Data.RetValue = s_Data.Builder->CreateAnd(lhs, rhs, "and");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LogicOr:
                 lhs = s_Data.Builder->CreateFCmpONE(lhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "lhs.neq");
                 rhs = s_Data.Builder->CreateFCmpONE(rhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "rhs.neq");
                 s_Data.RetValue = s_Data.Builder->CreateOr(lhs, rhs, "or");
-                s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
 
             default:
