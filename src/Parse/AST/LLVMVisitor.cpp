@@ -89,31 +89,31 @@ namespace scar {
 
         static llvm::Type* LLVMType(TypeInfo type) {
             switch (type) {
-            case scar::ast::TypeInfo::Void: return llvm::Type::getVoidTy(s_Data.Context);
+            case TypeInfo::Void: return llvm::Type::getVoidTy(s_Data.Context);
 
-            case scar::ast::TypeInfo::Bool: return llvm::Type::getInt1Ty(s_Data.Context);
+            case TypeInfo::Bool: return llvm::Type::getInt1Ty(s_Data.Context);
 
-            case scar::ast::TypeInfo::I8:  return llvm::Type::getInt8Ty(s_Data.Context);
-            case scar::ast::TypeInfo::I16: return llvm::Type::getInt16Ty(s_Data.Context);
-            case scar::ast::TypeInfo::I32: return llvm::Type::getInt32Ty(s_Data.Context);
-            case scar::ast::TypeInfo::I64: return llvm::Type::getInt64Ty(s_Data.Context);
+            case TypeInfo::I8:  return llvm::Type::getInt8Ty(s_Data.Context);
+            case TypeInfo::I16: return llvm::Type::getInt16Ty(s_Data.Context);
+            case TypeInfo::I32: return llvm::Type::getInt32Ty(s_Data.Context);
+            case TypeInfo::I64: return llvm::Type::getInt64Ty(s_Data.Context);
 
-            case scar::ast::TypeInfo::U8:  return llvm::Type::getInt8Ty(s_Data.Context);
-            case scar::ast::TypeInfo::U16: return llvm::Type::getInt16Ty(s_Data.Context);
-            case scar::ast::TypeInfo::U32: return llvm::Type::getInt32Ty(s_Data.Context);
-            case scar::ast::TypeInfo::U64: return llvm::Type::getInt64Ty(s_Data.Context);
+            case TypeInfo::U8:  return llvm::Type::getInt8Ty(s_Data.Context);
+            case TypeInfo::U16: return llvm::Type::getInt16Ty(s_Data.Context);
+            case TypeInfo::U32: return llvm::Type::getInt32Ty(s_Data.Context);
+            case TypeInfo::U64: return llvm::Type::getInt64Ty(s_Data.Context);
 
-            case scar::ast::TypeInfo::F32: return llvm::Type::getFloatTy(s_Data.Context);
-            case scar::ast::TypeInfo::F64: return llvm::Type::getDoubleTy(s_Data.Context);
+            case TypeInfo::F32: return llvm::Type::getFloatTy(s_Data.Context);
+            case TypeInfo::F64: return llvm::Type::getDoubleTy(s_Data.Context);
 
-            case scar::ast::TypeInfo::Char:
+            case TypeInfo::Char:
                 SCAR_BUG("missing llvm::Type for Type::Char");
                 break;
-            case scar::ast::TypeInfo::String:
+            case TypeInfo::String:
                 SCAR_BUG("missing llvm::Type for Type::String");
                 break;
             default:
-                SCAR_BUG("missing llvm::Type for Type {}", (int)type);
+                SCAR_BUG("missing llvm::Type for Type {}", type);
                 break;
             }
             return nullptr;
@@ -121,26 +121,26 @@ namespace scar {
 
         static unsigned int TypeBits(TypeInfo type) {
             switch (type) {
-            case scar::ast::TypeInfo::Bool: return 1;
+            case TypeInfo::Bool: return 1;
 
-            case scar::ast::TypeInfo::I8:  return 8;
-            case scar::ast::TypeInfo::I16: return 16;
-            case scar::ast::TypeInfo::I32: return 32;
-            case scar::ast::TypeInfo::I64: return 64;
+            case TypeInfo::I8:  return 8;
+            case TypeInfo::I16: return 16;
+            case TypeInfo::I32: return 32;
+            case TypeInfo::I64: return 64;
 
-            case scar::ast::TypeInfo::U8:  return 8;
-            case scar::ast::TypeInfo::U16: return 16;
-            case scar::ast::TypeInfo::U32: return 32;
-            case scar::ast::TypeInfo::U64: return 64;
+            case TypeInfo::U8:  return 8;
+            case TypeInfo::U16: return 16;
+            case TypeInfo::U32: return 32;
+            case TypeInfo::U64: return 64;
 
-            case scar::ast::TypeInfo::F32: return 32;
-            case scar::ast::TypeInfo::F64: return 64;
+            case TypeInfo::F32: return 32;
+            case TypeInfo::F64: return 64;
 
-            case scar::ast::TypeInfo::Char:
+            case TypeInfo::Char:
                 SCAR_BUG("missing bit count for Type::Char");
                 break;
             default:
-                SCAR_BUG("missing bit count for Type {}", (int)type);
+                SCAR_BUG("missing bit count for Type {}", type);
                 break;
             }
             return 0;
@@ -148,21 +148,21 @@ namespace scar {
 
         static bool TypeIsSigned(TypeInfo type) {
             switch (type) {
-            case scar::ast::TypeInfo::I8:  return true;
-            case scar::ast::TypeInfo::I16: return true;
-            case scar::ast::TypeInfo::I32: return true;
-            case scar::ast::TypeInfo::I64: return true;
+            case TypeInfo::I8:  return true;
+            case TypeInfo::I16: return true;
+            case TypeInfo::I32: return true;
+            case TypeInfo::I64: return true;
 
-            case scar::ast::TypeInfo::U8:  return false;
-            case scar::ast::TypeInfo::U16: return false;
-            case scar::ast::TypeInfo::U32: return false;
-            case scar::ast::TypeInfo::U64: return false;
+            case TypeInfo::U8:  return false;
+            case TypeInfo::U16: return false;
+            case TypeInfo::U32: return false;
+            case TypeInfo::U64: return false;
 
             case scar::ast::TypeInfo::Char:
                 SCAR_BUG("missing bit count for Type::Char");
                 break;
             default:
-                SCAR_BUG("missing bit count for Type {}", (int)type);
+                SCAR_BUG("missing bit count for Type {}", type);
                 break;
             }
             return false;
@@ -199,20 +199,7 @@ namespace scar {
         // TYPE
 
         void LLVMVisitor::Visit(Type& node) {
-            switch (node.ResultType) {
-            case TypeInfo::Void:
-                s_Data.RetType = llvm::Type::getDoubleTy(s_Data.Context);
-                return;
-            case TypeInfo::I32:
-                s_Data.RetType = llvm::Type::getInt32Ty(s_Data.Context);
-                return;
-            case TypeInfo::F64:
-                s_Data.RetType = llvm::Type::getDoubleTy(s_Data.Context);
-                return;
-            default:
-                SCAR_BUG("missing LLVM IR code for VariableType {}", node.ResultType);
-                break;
-            }
+            s_Data.RetType = LLVMType(node.ResultType);
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -268,8 +255,10 @@ namespace scar {
                 s_Data.RetValue = nullptr;
                 return;
             }
+#ifdef SCAR_RELEASE
             // Optimize function
             s_Data.FunctionPassManager->run(*func);
+#endif
 
             s_Data.RetValue = func;
         }
@@ -556,7 +545,7 @@ namespace scar {
                     }
                 }
                 // Cast to sint or uint
-                if (node.ResultType.IsInt()) {
+                else if (node.ResultType.IsInt()) {
                     if (node.LHS->ResultType.IsBool() || node.LHS->ResultType.IsInt()) {
                         // Basic int cast
                         s_Data.RetValue = s_Data.Builder->CreateIntCast(lhs, LLVMType(node.ResultType), node.ResultType.IsSInt(), "cast");
@@ -682,6 +671,8 @@ namespace scar {
             default: break;
             }
 
+            // TODO: Add short-circuit evaluation for && and ||
+
             node.LHS->Accept(*this);
             llvm::Value* lhs = s_Data.RetValue;
             node.RHS->Accept(*this);
@@ -712,50 +703,50 @@ namespace scar {
                 s_Data.RetValue = CreateSub(lhs, rhs, node.LHS, node.RHS);
                 break;
             case BinaryOperator::Greater:
-                s_Data.RetValue = s_Data.Builder->CreateFCmpUGT(lhs, rhs, "fcmpugt");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUGT(lhs, rhs, "fgr");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::GreaterEq:
-                s_Data.RetValue = s_Data.Builder->CreateFCmpUGE(lhs, rhs, "fcmpuge");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUGE(lhs, rhs, "fgeq");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::Lesser:
-                s_Data.RetValue = s_Data.Builder->CreateFCmpULT(lhs, rhs, "fcmpult");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpULT(lhs, rhs, "fle");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LesserEq:
-                s_Data.RetValue = s_Data.Builder->CreateFCmpULE(lhs, rhs, "fcmpule");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpULE(lhs, rhs, "fleq");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::Eq:
-                s_Data.RetValue = s_Data.Builder->CreateFCmpUEQ(lhs, rhs, "fcmpueq");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUEQ(lhs, rhs, "feq");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::NotEq:
-                s_Data.RetValue = s_Data.Builder->CreateFCmpUNE(lhs, rhs, "fcmpune");
+                s_Data.RetValue = s_Data.Builder->CreateFCmpUNE(lhs, rhs, "fneq");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitAnd:
-                s_Data.RetValue = s_Data.Builder->CreateAnd(lhs, rhs, "and");
+                s_Data.RetValue = s_Data.Builder->CreateAnd(lhs, rhs, "band");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitXOr:
-                s_Data.RetValue = s_Data.Builder->CreateXor(lhs, rhs, "xor");
+                s_Data.RetValue = s_Data.Builder->CreateXor(lhs, rhs, "bxor");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::BitOr:
-                s_Data.RetValue = s_Data.Builder->CreateOr(lhs, rhs, "or");
+                s_Data.RetValue = s_Data.Builder->CreateOr(lhs, rhs, "bor");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LogicAnd:
-                lhs = s_Data.Builder->CreateFCmpONE(lhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "lhscmp");
-                rhs = s_Data.Builder->CreateFCmpONE(rhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "rhscmp");
+                lhs = s_Data.Builder->CreateFCmpONE(lhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "lhs.neq");
+                rhs = s_Data.Builder->CreateFCmpONE(rhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "rhs.neq");
                 s_Data.RetValue = s_Data.Builder->CreateAnd(lhs, rhs, "and");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
             case BinaryOperator::LogicOr:
-                lhs = s_Data.Builder->CreateFCmpONE(lhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "lhscmp");
-                rhs = s_Data.Builder->CreateFCmpONE(rhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "rhscmp");
+                lhs = s_Data.Builder->CreateFCmpONE(lhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "lhs.neq");
+                rhs = s_Data.Builder->CreateFCmpONE(rhs, llvm::ConstantFP::get(s_Data.Context, llvm::APFloat(0.0)), "rhs.neq");
                 s_Data.RetValue = s_Data.Builder->CreateOr(lhs, rhs, "or");
                 s_Data.RetValue = s_Data.Builder->CreateUIToFP(s_Data.RetValue, llvm::Type::getDoubleTy(s_Data.Context), "uitofp");
                 break;
