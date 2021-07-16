@@ -19,6 +19,13 @@ func main(x f64) -> f64 {
     var float32: f32 = 1 as f32;
     var float64: f64 = 1 as f64;
 
+    for (var i: f64 = 0.0; i < 10.0; i = i + 1.0) {
+        if (i % 2.0 == 0.0) {
+            i = i - 0.5;
+        }
+        else {}
+    }
+
     var y: f64 = 1 as f64;
     loop {
         if (x + float64 != 0.0) {
