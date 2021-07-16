@@ -43,7 +43,7 @@ namespace scar {
         Token::Return,
         Token::Semi,
     };
-    
+
     struct OperatorInfo {
         Token::TokenType TokenType = Token::Invalid;
         unsigned int Precedence = 0;
@@ -327,7 +327,7 @@ namespace scar {
         return nullptr;
     }
 
-    // branch : IF ( expr ) block ELSE block 
+    // branch : IF ( expr ) block ELSE block
     //        | IF ( expr ) block
     Ref<ast::Branch> Parser::Branch() {
         TextPosition start = m_Token->GetTextPos();
@@ -343,7 +343,7 @@ namespace scar {
         Expect({ Token::Else });
 
         Ref<ast::Block> falseBlock = Block();
-        
+
         return MakeRef<ast::Branch>(cond, trueBlock, falseBlock, GetSpanFrom(start));
     }
 

@@ -156,7 +156,7 @@ namespace scar {
         const_iterator end() const   { return m_Tokens.end(); }
 
     private:
-        std::vector<Token> m_Tokens;   
+        std::vector<Token> m_Tokens;
     };
 
 }

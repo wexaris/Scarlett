@@ -8,7 +8,7 @@ namespace scar {
     ///////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
     // MISCELANEOUS
-    
+
     static std::unordered_map<std::string_view, Token::TokenType> KeywordMap = {
         { "func",     Token::Func },
         { "if",       Token::If },

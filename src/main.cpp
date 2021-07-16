@@ -12,7 +12,7 @@ std::vector<const char*> VectorizeArgs(int argc, const char* argv[]) {
 }
 
 int main(int argc, const char* argv[]) {
-    
+
     scar::Driver::Init(VectorizeArgs(argc, argv));
     scar::Driver::Compile();
     scar::Driver::Exit();

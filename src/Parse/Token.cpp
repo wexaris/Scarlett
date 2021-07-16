@@ -8,15 +8,15 @@ namespace scar {
     Token::Token(TokenType type, const TextSpan& span) :
         Type(type), Span(span)
     {}
-    
+
     Token::Token(TokenType type, TokenType valType, uint64_t val, const TextSpan& span) :
         Type(type), LiteralType(valType), Span(span), m_Value(std::in_place_index_t<0>{}, val)
     {}
-    
+
     Token::Token(TokenType type, TokenType valType, double val, const TextSpan& span) :
         Type(type), LiteralType(valType), Span(span), m_Value(std::in_place_index_t<1>{}, val)
     {}
-    
+
     Token::Token(TokenType type, std::string_view val, const TextSpan& span) :
         Type(type), LiteralType(String), Span(span), m_Value(std::in_place_index_t<2>{}, Interner::Intern(val))
     {}

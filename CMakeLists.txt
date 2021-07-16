@@ -47,7 +47,7 @@ target_compile_options(scar PRIVATE
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
             -Wall -pedantic -O0 -g -Wno-unused-function>
         $<$<CXX_COMPILER_ID:MSVC>:
-            /ZI /W3 /RTC1 /Od>>
+            /ZI /W3 /RTC1 /Od /D_ITERATOR_DEBUG_LEVEL=0>>
     $<$<CONFIG:RELEASE>: #RELEASE
         $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
             -O2 -s -DNDEBUG>

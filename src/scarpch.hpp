@@ -1,4 +1,7 @@
 #pragma once
+
+#include "Core/Core.hpp"
+
 #include <algorithm>
 #include <iostream>
 #include <memory>
@@ -10,5 +13,4 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "Core/Core.hpp"
 #include "Core/Log.hpp"
