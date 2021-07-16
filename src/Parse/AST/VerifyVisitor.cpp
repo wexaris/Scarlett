@@ -217,10 +217,10 @@ namespace scar {
                 node.ResultType = rhsType;
                 break;
             case PrefixOperator::Increment:
-                SCAR_BUG("PrefixOperator::Increment not implemented");
+                SCAR_UNIMPL("PrefixOperator::Increment");
                 break;
             case PrefixOperator::Decrement:
-                SCAR_BUG("PrefixOperator::Decrement not implemented");
+                SCAR_UNIMPL("PrefixOperator::Decrement");
                 break;
 
             default:
@@ -243,10 +243,10 @@ namespace scar {
 
             switch (node.Type) {
             case SuffixOperator::Increment:
-                SCAR_BUG("SuffixOperator::Increment not implemented");
+                SCAR_UNIMPL("SuffixOperator::Increment");
                 break;
             case SuffixOperator::Decrement:
-                SCAR_BUG("SuffixOperator::Decrement not implemented");
+                SCAR_UNIMPL("SuffixOperator::Decrement");
                 break;
             case SuffixOperator::Cast:
                 // TODO: check cast validity. Largely already done in LLVMVisitor.
@@ -295,7 +295,7 @@ namespace scar {
 
             switch (node.Type) {
             case BinaryOperator::MemberAccess:
-                SCAR_BUG("BinaryOperator::MemberAccess not implemented");
+                SCAR_UNIMPL("BinaryOperator::MemberAccess");
                 break;
             case BinaryOperator::Multiply:  [[fallthrough]];
             case BinaryOperator::Divide:    [[fallthrough]];

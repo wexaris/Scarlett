@@ -57,6 +57,7 @@
 #ifdef SCAR_DEBUG
     #define PYRE_ENABLE_ASSERTS
     #define SCAR_ENABLE_BUG_LOG
+    #define SCAR_ENABLE_UNIMPL_LOG
 
     #if defined SCAR_PLATFORM_WINDOWS
         #define SCAR_DEBUGBREAK() __debugbreak()
@@ -70,6 +71,12 @@
     #define SCAR_BUG(...) { SCAR_ERROR("{}: BUG: {}", SCAR_FUNCSIG, FMT(__VA_ARGS__)); SCAR_DEBUGBREAK(); }
 #else
     #define SCAR_BUG(...)
+#endif
+
+#ifdef SCAR_ENABLE_UNIMPL_LOG
+    #define SCAR_UNIMPL(...) { SCAR_ERROR("{} not implemented", FMT(__VA_ARGS__)); SCAR_DEBUGBREAK(); }
+#else
+    #define SCAR_UNIMPL(...)
 #endif
 
 #ifdef SCAR_ENABLE_ASSERTS

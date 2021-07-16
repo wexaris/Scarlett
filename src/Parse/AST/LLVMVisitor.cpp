@@ -487,10 +487,10 @@ namespace scar {
         void LLVMVisitor::Visit(PrefixOperator& node) {
             switch (node.Type) {
             case PrefixOperator::Increment:
-                SCAR_BUG("PrefixOperator::Increment not implemented");
+                SCAR_UNIMPL("PrefixOperator::Increment");
                 break;
             case PrefixOperator::Decrement:
-                SCAR_BUG("PrefixOperator::Decrement not implemented");
+                SCAR_UNIMPL("PrefixOperator::Decrement");
                 break;
             case PrefixOperator::Plus:
                 node.RHS->Accept(*this);
@@ -523,10 +523,10 @@ namespace scar {
 
             switch (node.Type) {
             case SuffixOperator::Increment:
-                SCAR_BUG("SuffixOperator::Increment not implemented");
+                SCAR_UNIMPL("SuffixOperator::Increment");
                 break;
             case SuffixOperator::Decrement:
-                SCAR_BUG("SuffixOperator::Decrement not implemented");
+                SCAR_UNIMPL("SuffixOperator::Decrement");
                 break;
             case SuffixOperator::Cast:
             {
@@ -682,7 +682,7 @@ namespace scar {
 
             switch (node.Type) {
             case BinaryOperator::MemberAccess:
-                SCAR_BUG("BinaryOperator::MemberAccess not implemented");
+                SCAR_UNIMPL("BinaryOperator::MemberAccess");
                 break;
             case BinaryOperator::Multiply:
                 s_Data.RetValue = CreateMul(lhs, rhs, node.LHS, node.RHS);
