@@ -189,7 +189,7 @@ namespace scar {
             s_Data.Module->print(llvm::outs(), nullptr);
         }
 
-        static llvm::AllocaInst* CreateEntryAlloca(llvm::Function* func, llvm::Type* type, const std::string& name)  {
+        static llvm::AllocaInst* CreateEntryAlloca(llvm::Function* func, llvm::Type* type, llvm::StringRef name)  {
             llvm::IRBuilder<> builder = llvm::IRBuilder<>(&func->getEntryBlock(), func->getEntryBlock().begin());
             return s_Data.Builder->CreateAlloca(type, 0, name);
         }
@@ -235,7 +235,7 @@ namespace scar {
             for (auto& arg : func->args()) {
                 llvm::AllocaInst* alloc = CreateEntryAlloca(func, arg.getType(), arg.getName());
                 s_Data.Builder->CreateStore(&arg, alloc);
-                s_Data.Symbols.Add(arg.getName(), alloc);
+                s_Data.Symbols.Add(arg.getName().str(), alloc);
             }
 
             node.CodeBlock->Accept(*this);
@@ -476,8 +476,9 @@ namespace scar {
         }
 
         void LLVMVisitor::Visit(VarAccess& node) {
-            s_Data.RetAlloca = s_Data.Symbols.Find(node.Name).Alloca;
-            s_Data.RetValue = s_Data.Builder->CreateLoad(s_Data.RetAlloca, node.Name.GetString());
+            auto symbol = s_Data.Symbols.Find(node.Name);
+            s_Data.RetAlloca = symbol.Alloca;
+            s_Data.RetValue = s_Data.Builder->CreateLoad(symbol.Type, symbol.Alloca, node.Name.GetString());
         }
 
         ///////////////////////////////////////////////////////////////////////
