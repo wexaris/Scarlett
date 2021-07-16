@@ -38,8 +38,8 @@ namespace scar {
         // VISITOR
 
         struct LLVMVisitorSymbol {
-            llvm::AllocaInst* Alloca;
-            llvm::Type* Type;
+            llvm::AllocaInst* Alloca = nullptr;
+            llvm::Type* Type= nullptr;
             llvm::StringRef Name;
         };
         class LLVMVisitorSymbolTable : public SymbolTable<std::string, LLVMVisitorSymbol> {
@@ -49,7 +49,7 @@ namespace scar {
 
             void Add(const Ident& key, llvm::AllocaInst* val) { Add(key.GetString(), val); }
             void Add(const std::string& key, llvm::AllocaInst* val) {
-                m_Symbols.back()[key] = LLVMVisitorSymbol{ val, val->getType(), val->getName() };
+                m_Symbols.back()[key] = LLVMVisitorSymbol{ val, val->getAllocatedType(), val->getName() };
             }
 
             const LLVMVisitorSymbol& Find(const Ident& key) const { return Find(key.GetString()); }
