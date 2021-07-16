@@ -9,8 +9,8 @@ namespace scar {
             SymbolTable() { PushScope(); }
             virtual ~SymbolTable() = default;
 
-            void PushScope() { m_Symbols.push_back({}); }
-            void PopScope()  { m_Symbols.pop_back(); }
+            virtual void PushScope() { m_Symbols.push_back({}); }
+            virtual void PopScope()  { m_Symbols.pop_back(); }
 
         protected:
             std::vector<std::unordered_map<Key, Value>> m_Symbols;
